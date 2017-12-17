@@ -1,6 +1,8 @@
 package ir.sbpro.sadegh.myfilesapp;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Environment;
@@ -10,9 +12,16 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,18 +36,23 @@ public class MainActivity extends AppCompatActivity {
     final static int DIRECTORIES_ONLY = 1;
     final static int FILES_ONLY = 2;
     final static int BOTH = 0;
+    final static int UNKNOWN = -1000;
+
     final static int MAX_FILE_SIZE = 1024*500 ;
 
     EditText txtFileName, txtContent, txtDir;
-    TextView txvStorages, txvExternalState, txvCurrentDir;
+    TextView txvCurrentDir;
+    String strStorages, strExternalState;
     Button btnWrite, btnRead, btnOpenFile, btnHelpFile,
             btnDetsFile, btnCopyFile, btnCutFile, btnRemoveFile,
-            btnInsertInternalDir, btnInsertExternalDir,
+            btnSDCardDir, btnInsertExternalDir,
             btnHelpDir, btnChangeDir, btnShowDir, btnMakeDir,
             btnDetsDir, btnCopyDir, btnCutDir, btnRemoveDir;
 
     String internalFilesDir;
     String externalDir;
+    String sdcardDir;
+    String tempStr;
     File currentDir;
 
     SharedPreferences sharedPreferences;
@@ -55,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         internalFilesDir = getFilesDir().getAbsolutePath().toString();
         externalDir = Environment.getExternalStorageDirectory().getAbsolutePath().toString();
+        sdcardDir=null;
 
         if(!haveStoragePermission()) getStoragePermission();
 
@@ -69,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
         btnCopyFile=findViewById(R.id.btnCopyFile);
         btnCutFile=findViewById(R.id.btnCutFile);
         btnRemoveFile=findViewById(R.id.btnRemoveFile);
-        btnInsertInternalDir=findViewById(R.id.btnInsertInternalDir);
+        btnSDCardDir=findViewById(R.id.btnSDCardDir);
         btnInsertExternalDir=findViewById(R.id.btnInsertExternalDir);
         btnHelpDir=findViewById(R.id.btnHelpDir);
         btnChangeDir=findViewById(R.id.btnChangeDir);
@@ -79,8 +94,6 @@ public class MainActivity extends AppCompatActivity {
         btnCopyDir=findViewById(R.id.btnCopyDir);
         btnCutDir=findViewById(R.id.btnCutDir);
         btnRemoveDir=findViewById(R.id.btnRemoveDir);
-        txvStorages=findViewById(R.id.txvStorages);
-        txvExternalState=findViewById(R.id.txvExternalState);
         txvCurrentDir=findViewById(R.id.txvCurrentDir);
 
         sharedPreferences=getSharedPreferences("prefs", MODE_PRIVATE);
@@ -92,6 +105,32 @@ public class MainActivity extends AppCompatActivity {
 
         String receivedDir = sharedPreferences.getString("current-dir", externalDir);
         currentDir = new File(receivedDir);
+        sdcardDir=sharedPreferences.getString("sdcdir", null);
+
+        int sortBy, sortDir;
+        sortBy=sharedPreferences.getInt("sortby", UNKNOWN);
+        sortDir=sharedPreferences.getInt("sortdir", UNKNOWN);
+
+        if(sortBy != UNKNOWN){
+            RadioButton rbName = findViewById(R.id.rbSortName);
+            RadioButton rbSize = findViewById(R.id.rbSortSize);
+            RadioButton rbModified = findViewById(R.id.rbSortModified);
+            if(sortBy == FileOpen.SORT_BY_NAME)
+                rbName.setChecked(true);
+            else if(sortBy == FileOpen.SORT_BY_SIZE)
+                rbSize.setChecked(true);
+            else if(sortBy == FileOpen.SORT_BY_MODIFIED)
+                rbModified.setChecked(true);
+        }
+
+        if(sortDir != UNKNOWN){
+            RadioButton rbAscending = findViewById(R.id.rbSortAscending);
+            RadioButton rbDescending = findViewById(R.id.rbSortDescending);
+            if(sortDir == FileOpen.SORT_ASCENDING)
+                rbAscending.setChecked(true);
+            else if(sortDir == FileOpen.SORT_DESCENDING)
+                rbDescending.setChecked(true);
+        }
 
         setTxvCurrentDir();
         setTxvExternalState();
@@ -101,35 +140,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String fileName=getAbsoluteTextBoxFileName();
-                String textBoxFileName = txtFileName.getText().toString();
                 String content=txtContent.getText().toString();
                 File file=new File(fileName);
-                File parent=file.getParentFile();
 
-                if(parent!=null){
-                    if(!parent.exists()){
-                        Toast.makeText(MainActivity.this, "Parent Directory Not Found!", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                }
-
-                if(textBoxFileName.isEmpty()){
-                    txtFileName.requestFocus();
-                    return;
-                }
-
-                if(isExternalReqTxtDir()){
-                    if(!haveStoragePermission()){
-                        deniedToast.show();
-                        return;
-                    }
-                    if(!isExtStorageReady()){
-                        removedExtToast.show();
-                        return;
-                    }
-                }
-
-                writeFile(file, content.getBytes());
+                if(isHavePermissionToWriteTextBoxFileName())
+                    writeFile(file, content.getBytes());
             }
         });
 
@@ -139,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
                 String fileName=getAbsoluteTextBoxFileName();
                 File file = new File(fileName);
 
-                if(getPermissionToOpenTextBoxFileName()) {
+                if(isHavePermissionToOpenTextBoxFileName()) {
                     String content = readTxtFile(file);
                     if (content != null) txtContent.setText(content);
                 }
@@ -152,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                 String fileName=getAbsoluteTextBoxFileName();
                 File file = new File(fileName);
 
-                if(getPermissionToOpenTextBoxFileName()){
+                if(isHavePermissionToOpenTextBoxFileName()){
                     try {
                         FileOpen.openFile(MainActivity.this, file);
                     } catch (IOException e) {
@@ -169,11 +184,69 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btnInsertInternalDir.setOnClickListener(new View.OnClickListener() {
+        btnDetsFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                txtDir.setText(internalFilesDir);
-                txtDir.setSelection(txtDir.getText().length());
+
+            }
+        });
+
+        btnCopyFile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
+        btnCutFile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
+        btnRemoveFile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String fileName=getAbsoluteTextBoxFileName();
+                final File file=new File(fileName);
+
+                if(isHavePermissionToWriteTextBoxFileName() && isHavePermissionToOpenTextBoxFileName()){
+                    new SureDialog(MainActivity.this, "Are You Sure?", new Runnable() {
+                        @Override
+                        public void run() {
+                            if(file.delete()){
+                                showLongToast("File Deleted!");
+                                txtFileName.setText("");
+                                txtFileName.requestFocus();
+                            }
+                            else showLongToast("The file can not be deleted");
+                        }
+                    }, null).show();
+                }
+            }
+        });
+
+        btnSDCardDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(sdcardDir==null && sdcardDir.equals("")) {
+                    getSDCardDirInDialog();
+                }
+                else{
+                    txtDir.setText(sdcardDir);
+                    txtDir.requestFocus();
+                    txtDir.setSelection(txtDir.getText().length());
+                    setTxvStorages();
+                }
+            }
+        });
+
+        btnSDCardDir.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                getSDCardDirInDialog();
+                return false;
             }
         });
 
@@ -265,7 +338,34 @@ public class MainActivity extends AppCompatActivity {
 
                 if(currentDir.canRead()) showDirectoryDialog(currentDir, BOTH);
                 else accessDeniedToast.show();
-                showLongToast(String.valueOf(currentDir.length()));
+            }
+        });
+
+        btnDetsDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
+        btnCopyDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
+        btnCutDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+
+        btnRemoveDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
             }
         });
     }
@@ -276,7 +376,26 @@ public class MainActivity extends AppCompatActivity {
         String fileName = txtFileName.getText().toString();
 
         spEditor.putString("current-dir", currentDir.getAbsolutePath().toString());
+        spEditor.putString("sdcdir", sdcardDir);
+        spEditor.putInt("sortby", getSortByMethod());
+        spEditor.putInt("sortdir", getSortDir());
         spEditor.apply();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add("Storage State").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("Storage State")
+                        .setMessage(strStorages + "\n\n" + strExternalState)
+                        .show();
+                return false;
+            }
+        });
+
+        return super.onCreateOptionsMenu(menu);
     }
 
     private void writeFile(File file, byte[] content){
@@ -328,6 +447,8 @@ public class MainActivity extends AppCompatActivity {
                 sb.append(line);
             }
 
+            fis.close();
+
             return sb.toString();
         }
 
@@ -360,15 +481,21 @@ public class MainActivity extends AppCompatActivity {
             String[] list = dir.list();
             StringBuilder sb=new StringBuilder();
 
-            for(String item : list){
+            File[] filesList = new File[list.length];
+            for(int i=0; list.length>i; i++){
+                filesList[i]=new File(dir.getAbsolutePath().toString(), list[i]);
+            }
+
+            FileOpen.sortFiles(filesList, getSortByMethod(), getSortDir());
+
+            for(File ios : filesList){
                 String itemStr = "";
-                File ios=new File(dir.getAbsolutePath().toString(), item);
 
                 if(ios.isDirectory()){
-                    itemStr="* Directory: " + item;
+                    itemStr="* Directory: " + ios.getName();
                 }
                 else if(ios.isFile()){
-                    itemStr="* File: " + item;
+                    itemStr="* File: " + ios.getName();
                 }
 
                 if(sb.toString().length()>0) sb.append("\n");
@@ -386,22 +513,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setTxvStorages(){
-        //txvStorages.setText("Internal: " + internalFilesDir + "\n" + "External: " + externalDir);
-        txvStorages.setText("External: " + externalDir);
+        strStorages = "Internal Directory:\n" + externalDir + "\n\n" + "SDCard Directory:\n";
+        if(sdcardDir != null || !sdcardDir.equals(""))
+            strStorages+=sdcardDir;
+        else
+            strStorages+="Unknown";
     }
 
     private void setTxvExternalState(){
-        String tempStr = "External Storage State: ";
+        String tempStr = "Storage State:\n";
 
         if(haveStoragePermission()) tempStr=tempStr+"Permission Granted";
         else tempStr=tempStr+"Permission Denied";
 
         if(Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED))
-            txvExternalState.setText(tempStr + " - Ready");
+            strExternalState = tempStr + " - Ready";
         else if(Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED_READ_ONLY))
-            txvExternalState.setText(tempStr + " - Read Only");
+            strExternalState = tempStr + " - Read Only";
         else
-            txvExternalState.setText(tempStr + " - Removed");
+            strExternalState = tempStr + " - Removed";
     }
 
     private String getAbsoluteTextBoxFileName(){
@@ -473,7 +603,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean getPermissionToOpenTextBoxFileName(){
+    private boolean isHavePermissionToOpenTextBoxFileName(){
         String fileName=getAbsoluteTextBoxFileName();
         String textBoxFileName = txtFileName.getText().toString();
 
@@ -503,6 +633,39 @@ public class MainActivity extends AppCompatActivity {
         if(!file.canRead()){
             accessDeniedToast.show();
             return false;
+        }
+
+        return true;
+    }
+
+    private boolean isHavePermissionToWriteTextBoxFileName(){
+        String fileName=getAbsoluteTextBoxFileName();
+        String textBoxFileName = txtFileName.getText().toString();
+        String content=txtContent.getText().toString();
+        File file=new File(fileName);
+        File parent=file.getParentFile();
+
+        if(parent!=null){
+            if(!parent.exists()){
+                Toast.makeText(MainActivity.this, "Parent Directory Not Found!", Toast.LENGTH_LONG).show();
+                return false;
+            }
+        }
+
+        if(textBoxFileName.isEmpty()){
+            txtFileName.requestFocus();
+            return false;
+        }
+
+        if(isExternalReqTxtDir()){
+            if(!haveStoragePermission()){
+                deniedToast.show();
+                return false;
+            }
+            if(!isExtStorageReady()){
+                removedExtToast.show();
+                return false;
+            }
         }
 
         return true;
@@ -564,7 +727,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(filesList==null || filesList.length==0) return;
 
-        String[] offersList = new String[filesList.length];
+        String[] tempOffersList = new String[filesList.length];
         int olIndex=0;
 
         for(String item : filesList){
@@ -574,34 +737,117 @@ public class MainActivity extends AppCompatActivity {
             else correctType=tf.isFile();
 
             if(item.indexOf(txtBoxLastChildName)==0 && correctType)
-                offersList[olIndex++]=item;
+                tempOffersList[olIndex++]=item;
         }
 
-        if(olIndex==1){
+        File []filesOffersList=new File[olIndex];
+
+        for(int i=0; olIndex>i; i++){
+            filesOffersList[i]=new File(parentFile.getAbsolutePath(), tempOffersList[i]);
+        }
+
+        tempOffersList = null;
+
+        FileOpen.sortFiles(filesOffersList, getSortByMethod(), getSortDir());
+
+        if(filesOffersList.length==1){
             String tempStr;
             if(txtBoxParentName.isEmpty())
-                tempStr = offersList[0];
+                tempStr = filesOffersList[0].getName();
             else
-                tempStr = txtBoxParentName+"/"+offersList[0];
+                tempStr = txtBoxParentName+"/"+filesOffersList[0].getName();
 
             if(type==DIRECTORIES_ONLY) tempStr=tempStr+"/";
 
             textBox.setText(tempStr);
             textBox.setSelection(textBox.getText().length());
         }
-        else if(olIndex>1){
+        else if(filesOffersList.length>1){
             AlertDialog.Builder dialog;
             dialog=new AlertDialog.Builder(this);
             StringBuilder sb = new StringBuilder();
 
-            for(int i=0; olIndex>i; i++){
+            for(int i=0; filesOffersList.length>i; i++){
                 if(sb.toString().length()>0) sb.append("\n");
-                sb.append("* " + offersList[i]);
+                sb.append("* " + filesOffersList[i].getName());
             }
 
             dialog.setMessage(sb.toString());
             dialog.show();
         }
+    }
+
+    private int getSortByMethod(){
+        RadioGroup rg = findViewById(R.id.rgSortBy);
+        int id = rg.getCheckedRadioButtonId();
+        if(id == R.id.rbSortName) return FileOpen.SORT_BY_NAME;
+        else if(id == R.id.rbSortSize) return FileOpen.SORT_BY_SIZE;
+        else return FileOpen.SORT_BY_MODIFIED;
+    }
+
+    private int getSortDir(){
+        RadioGroup rg = findViewById(R.id.rgSortDir);
+        int id = rg.getCheckedRadioButtonId();
+        if(id == R.id.rbSortAscending) return FileOpen.SORT_ASCENDING;
+        else return FileOpen.SORT_DESCENDING;
+    }
+
+    private void getSDCardDirInDialog(){
+        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View view = inflater.inflate(R.layout.dialog_getstr, null);
+        final AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
+
+        final EditText txtGetInput = view.findViewById(R.id.txtInput);
+        if(sdcardDir==null || sdcardDir.equals("")) txtGetInput.setText("/");
+        else txtGetInput.setText(sdcardDir);
+        txtGetInput.setSelection(txtGetInput.getText().toString().length());
+
+        dialog.setTitle("SDCard Dir");
+        dialog.setMessage("Please enter your sdcard root directory!");
+        dialog.setView(view);
+
+        dialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                tempStr = txtGetInput.getText().toString();
+                if(tempStr.isEmpty()) return;
+                String fileName = recGetAbsTextBoxFileName(currentDir, tempStr);
+                File file = new File(fileName);
+                if(file.exists() && file.isDirectory())
+                    sdcardDir = file.getAbsolutePath().toString() + "/";
+                else
+                    showLongToast("Directory Not Found");
+
+                txtDir.setText(sdcardDir);
+                txtDir.requestFocus();
+                txtDir.setSelection(txtDir.getText().length());
+                setTxvStorages();
+            }
+        });
+
+        dialog.setNegativeButton("Cancel", null);
+        final AlertDialog myDialog = dialog.create();
+        myDialog.show();
+
+        txtGetInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if(txtGetInput.getText().toString().isEmpty())
+                    ((AlertDialog)myDialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                else
+                    ((AlertDialog)myDialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+            }
+        });
     }
 }
 

@@ -7,6 +7,12 @@ import java.io.IOException;
 
 public class FileOpen {
 
+    final static int SORT_ASCENDING = 1;
+    final static int SORT_DESCENDING = 2;
+    final static int SORT_BY_NAME = 1;
+    final static int SORT_BY_SIZE = 2;
+    final static int SORT_BY_MODIFIED = 3;
+
     public static void openFile(Context context, File url) throws IOException {
         // Create URI
         File file=url;
@@ -60,5 +66,42 @@ public class FileOpen {
 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(Intent.createChooser(intent, "Select"));
+    }
+
+    public static  void sortFiles(File[] filesList, int sortBy, int sortDir){
+        for(int i=0; filesList.length>i; i++){
+            int chosenIndex = i;
+            for(int j=i+1; filesList.length>j; j++){
+                boolean change = false;
+                if(sortBy==SORT_BY_NAME){
+                    if(sortDir==SORT_ASCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) < 0)
+                        change=true;
+                    else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) > 0)
+                        change=true;
+                }
+                else if(sortBy==SORT_BY_SIZE){
+                    if(sortDir==SORT_ASCENDING && filesList[chosenIndex].length()>filesList[j].length())
+                        change=true;
+                    else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].length()<filesList[j].length())
+                        change=true;
+                }
+                else if(sortBy==SORT_BY_MODIFIED){
+                    if(sortDir==SORT_ASCENDING && filesList[chosenIndex].lastModified()>filesList[j].lastModified())
+                        change=true;
+                    else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].lastModified()<filesList[j].lastModified())
+                        change=true;
+                }
+
+                if(change){
+                    chosenIndex=j;
+                }
+            }
+
+            if(chosenIndex!=i){
+                File tempFile=filesList[i];
+                filesList[i]=filesList[chosenIndex];
+                filesList[chosenIndex]=tempFile;
+            }
+        }
     }
 }

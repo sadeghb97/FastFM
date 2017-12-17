@@ -34,7 +34,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLines="5"
+            android:maxLines="3"
             android:hint="Content"
             android:inputType="textMultiLine" />
 
@@ -124,7 +124,7 @@
             android:layout_height="wrap_content"
             android:ems="10"
             android:inputType="text"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:text=""
             android:hint="Directory" />
 
@@ -135,21 +135,21 @@
             android:weightSum="5">
 
             <Button
-                android:id="@+id/btnInsertInternalDir"
-                style="@style/Base.Widget.AppCompat.Button.Colored"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:width="0dp"
-                android:text="Int" />
-
-            <Button
                 android:id="@+id/btnInsertExternalDir"
                 style="@style/Base.Widget.AppCompat.Button.Colored"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Ext" />
+                android:text="Int" />
+
+            <Button
+                android:id="@+id/btnSDCardDir"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:width="0dp"
+                android:text="SDC" />
 
 
             <Button
@@ -231,26 +231,78 @@
             android:id="@+id/txvCurrentDir"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
             android:gravity="center"
             android:text="---"
             android:textColor="?attr/colorPrimaryDark" />
 
         <TextView
-            android:id="@+id/txvStorages"
+            android:id="@+id/txvCurrentDir2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="20dp"
             android:gravity="center"
-            android:text="---" />
+            android:text="Sort By"
+            android:textSize="16sp"
+            android:textColor="#0711d9" />
 
-        <TextView
-            android:id="@+id/txvExternalState"
+        <RadioGroup
+            android:id="@+id/rgSortBy"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:layout_marginLeft="48dp"
+            android:layout_marginRight="48dp"
             android:gravity="center"
-            android:text="---" />
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbSortName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checked="true"
+                android:text="Name" />
+
+            <RadioButton
+                android:id="@+id/rbSortSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Size" />
+
+            <RadioButton
+                android:id="@+id/rbSortModified"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Modified" />
+        </RadioGroup>
+
+        <RadioGroup
+            android:id="@+id/rgSortDir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="56dp"
+            android:layout_marginRight="56dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbSortAscending"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checked="true"
+                android:text="Ascending" />
+
+            <RadioButton
+                android:id="@+id/rbSortDescending"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Descending" />
+
+        </RadioGroup>
 
     </LinearLayout>
 </android.support.constraint.ConstraintLayout>
