@@ -78,6 +78,46 @@
                 android:text="Help" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="4">
+
+            <Button
+                android:id="@+id/btnDetFile"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:width="0dp"
+                android:text="Dets" />
+
+            <Button
+                android:id="@+id/btnCopyFile"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Copy" />
+
+            <Button
+                android:id="@+id/btnCutFile"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Cut" />
+
+            <Button
+                android:id="@+id/btnRemoveFile"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="RM" />
+        </LinearLayout>
+
         <EditText
             android:id="@+id/txtDir"
             android:layout_width="match_parent"
@@ -92,7 +132,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:weightSum="3">
+            android:weightSum="5">
 
             <Button
                 android:id="@+id/btnInsertInternalDir"
@@ -101,7 +141,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:width="0dp"
-                android:text="Internal" />
+                android:text="Int" />
 
             <Button
                 android:id="@+id/btnInsertExternalDir"
@@ -109,7 +149,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="External" />
+                android:text="Ext" />
 
 
             <Button
@@ -119,13 +159,6 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Help" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="3">
 
             <Button
                 android:id="@+id/btnShowDir"
@@ -133,7 +166,22 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Show Dir" />
+                android:text="Show" />
+
+            <Button
+                android:id="@+id/btnDetDir"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Dets" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:weightSum="5">
 
             <Button
                 android:id="@+id/btnMakeDir"
@@ -141,7 +189,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Make Dir" />
+                android:text="MKD" />
 
             <Button
                 android:id="@+id/btnChangeDir"
@@ -150,7 +198,33 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:width="0dp"
-                android:text="Change Dir" />
+                android:text="CD" />
+
+            <Button
+                android:id="@+id/btnCopyDir"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Copy" />
+
+            <Button
+                android:id="@+id/btnCutDir"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:width="0dp"
+                android:text="Cut" />
+
+            <Button
+                android:id="@+id/btnRemoveDir"
+                style="@style/Base.Widget.AppCompat.Button.Colored"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:width="0dp"
+                android:text="RMD" />
         </LinearLayout>
 
         <TextView

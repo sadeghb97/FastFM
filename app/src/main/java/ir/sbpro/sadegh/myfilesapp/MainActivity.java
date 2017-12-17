@@ -31,8 +31,11 @@ public class MainActivity extends AppCompatActivity {
 
     EditText txtFileName, txtContent, txtDir;
     TextView txvStorages, txvExternalState, txvCurrentDir;
-    Button btnWrite, btnRead, btnOpenFile, btnHelpFile, btnInsertInternalDir, btnInsertExternalDir,
-    btnHelpDir, btnChangeDir, btnShowDir, btnMakeDir;
+    Button btnWrite, btnRead, btnOpenFile, btnHelpFile,
+            btnDetsFile, btnCopyFile, btnCutFile, btnRemoveFile,
+            btnInsertInternalDir, btnInsertExternalDir,
+            btnHelpDir, btnChangeDir, btnShowDir, btnMakeDir,
+            btnDetsDir, btnCopyDir, btnCutDir, btnRemoveDir;
 
     String internalFilesDir;
     String externalDir;
@@ -62,12 +65,20 @@ public class MainActivity extends AppCompatActivity {
         btnRead=findViewById(R.id.btnRead);
         btnHelpFile=findViewById(R.id.btnHelpFile);
         btnOpenFile=findViewById(R.id.btnOpenFile);
+        btnDetsFile=findViewById(R.id.btnDetFile);
+        btnCopyFile=findViewById(R.id.btnCopyFile);
+        btnCutFile=findViewById(R.id.btnCutFile);
+        btnRemoveFile=findViewById(R.id.btnRemoveFile);
         btnInsertInternalDir=findViewById(R.id.btnInsertInternalDir);
         btnInsertExternalDir=findViewById(R.id.btnInsertExternalDir);
         btnHelpDir=findViewById(R.id.btnHelpDir);
         btnChangeDir=findViewById(R.id.btnChangeDir);
         btnShowDir=findViewById(R.id.btnShowDir);
         btnMakeDir=findViewById(R.id.btnMakeDir);
+        btnDetsDir=findViewById(R.id.btnDetDir);
+        btnCopyDir=findViewById(R.id.btnCopyDir);
+        btnCutDir=findViewById(R.id.btnCutDir);
+        btnRemoveDir=findViewById(R.id.btnRemoveDir);
         txvStorages=findViewById(R.id.txvStorages);
         txvExternalState=findViewById(R.id.txvExternalState);
         txvCurrentDir=findViewById(R.id.txvCurrentDir);
@@ -254,6 +265,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if(currentDir.canRead()) showDirectoryDialog(currentDir, BOTH);
                 else accessDeniedToast.show();
+                showLongToast(String.valueOf(currentDir.length()));
             }
         });
     }
@@ -533,7 +545,9 @@ public class MainActivity extends AppCompatActivity {
 
         if(position==0){
             txtBoxParentName="";
-            txtBoxLastChildName="";
+            if(textBoxStr.length()>(position+1))
+                txtBoxLastChildName = textBoxStr.substring(position+1);
+            else txtBoxLastChildName="";
         }
         else if(position>0){
             txtBoxParentName = textBoxStr.substring(0, position);
