@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String fileName=getAbsoluteTextBoxFileName();
+                String textBoxFileName = txtFileName.getText().toString();
                 String content=txtContent.getText().toString();
                 File file=new File(fileName);
                 File parent=file.getParentFile();
@@ -101,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                if(fileName.isEmpty()){
+                if(textBoxFileName.isEmpty()){
                     txtFileName.requestFocus();
                     return;
                 }
@@ -462,12 +463,14 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean getPermissionToOpenTextBoxFileName(){
         String fileName=getAbsoluteTextBoxFileName();
-        File file = new File(fileName);
+        String textBoxFileName = txtFileName.getText().toString();
 
-        if(fileName.isEmpty()){
+        if(textBoxFileName.isEmpty()){
             txtFileName.requestFocus();
             return false;
         }
+
+        File file = new File(fileName);
 
         if(isExternalReqTxtDir()) {
             if (!haveStoragePermission()) {
