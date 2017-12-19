@@ -12,9 +12,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -31,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
     final static int DIRECTORIES_ONLY = 1;
@@ -187,21 +185,82 @@ public class MainActivity extends AppCompatActivity {
         btnDetsFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                String fileName=getAbsoluteTextBoxFileName();
+                File file = new File(fileName);
 
+                if(isHavePermissionToOpenTextBoxFileName()) {
+                    showProperties(file);
+                }
             }
         });
 
         btnCopyFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                String fileName=getAbsoluteTextBoxFileName();
+                final File file = new File(fileName);
 
+                if(isHavePermissionToOpenTextBoxFileName()) {
+                    final GetFileNameDialog reqDestDialog = new GetFileNameDialog(MainActivity.this,
+                            R.layout.dialog_getstr, R.id.txtInput, "", "Destination",
+                            "Please Enter Destination File Name", currentDir, BOTH);
+
+                    reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String destFileName = recGetAbsTextBoxFileName(currentDir,
+                                    reqDestDialog.getTxtGetInput().getText().toString());
+                            File dest = new File(destFileName);
+
+                            if (isHavePermissionToWriteTextBoxFileName(reqDestDialog.getTxtGetInput())) {
+
+                                if (copyFile(file, dest))
+                                    showLongToast("File Copied");
+                                else
+                                    showLongToast("The file can not be copied");
+                            }
+                        }
+                    });
+
+                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.createDialog();
+                    reqDestDialog.showDialog();
+                }
             }
         });
 
         btnCutFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                String fileName=getAbsoluteTextBoxFileName();
+                final File file = new File(fileName);
 
+                if(isHavePermissionToOpenTextBoxFileName()) {
+                    final GetFileNameDialog reqDestDialog = new GetFileNameDialog(MainActivity.this,
+                            R.layout.dialog_getstr, R.id.txtInput, "", "Destination",
+                            "Please Enter Destination File Name", currentDir, BOTH);
+
+                    reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String destFileName = recGetAbsTextBoxFileName(currentDir,
+                                    reqDestDialog.getTxtGetInput().getText().toString());
+                            File dest = new File(destFileName);
+
+                            if (isHavePermissionToWriteTextBoxFileName(reqDestDialog.getTxtGetInput())) {
+
+                                if (cutFile(file, dest))
+                                    showLongToast("File Moved");
+                                else
+                                    showLongToast("The file can not be copied");
+                            }
+                        }
+                    });
+
+                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.createDialog();
+                    reqDestDialog.showDialog();
+                }
             }
         });
 
@@ -296,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                if(isExternalReqTxtDir()) {
+                if(isExternalReq(txtDir)) {
                     if (!haveStoragePermission()){
                         deniedToast.show();
                         return;
@@ -309,12 +368,16 @@ public class MainActivity extends AppCompatActivity {
 
                 String txtDirStr = getAbsoluteTextBoxDir();
                 File tempDir = new File(txtDirStr);
+
                 if (tempDir.exists()) {
                     Toast.makeText(MainActivity.this, "Directory Exists Now!", Toast.LENGTH_SHORT).show();
                 }
                 else {
-                    tempDir.mkdirs();
-                    Toast.makeText(MainActivity.this, "Directory Created!", Toast.LENGTH_LONG).show();
+                    if(tempDir.mkdirs()){
+                        Toast.makeText(MainActivity.this, "Directory Created!", Toast.LENGTH_LONG).show();
+                    }
+                    else
+                        accessDeniedToast.show();
                 }
 
                 txtDir.setText("");
@@ -325,26 +388,36 @@ public class MainActivity extends AppCompatActivity {
         btnShowDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(isExternalReqTxtDir()){
-                    if(!haveStoragePermission()){
-                        deniedToast.show();
-                        return;
-                    }
-                    else if(!isReadableExtStorageReady()){
-                        removedExtToast.show();
-                        return;
-                    }
+                File dir;
+
+                if(txtDir.getText().toString().isEmpty()){
+                    dir=currentDir;
+                }
+                else{
+                    String txtDirStr= getAbsoluteTextBoxDir();
+                    dir=new File(txtDirStr);
                 }
 
-                if(currentDir.canRead()) showDirectoryDialog(currentDir, BOTH);
-                else accessDeniedToast.show();
+                if(canShowDir(dir))
+                    showDirectoryDialog(dir, BOTH);
             }
         });
 
         btnDetsDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                File dir;
 
+                if(txtDir.getText().toString().isEmpty()){
+                    dir=currentDir;
+                }
+                else{
+                    String txtDirStr= getAbsoluteTextBoxDir();
+                    dir=new File(txtDirStr);
+                }
+
+                if(canShowDir(dir))
+                    showProperties(dir);
             }
         });
 
@@ -453,10 +526,101 @@ public class MainActivity extends AppCompatActivity {
         }
 
         catch (IOException e) {
-            new AlertDialog.Builder(this).setMessage(e.getMessage()).show();
+            showLongToast(e.getMessage());
         }
 
         return null;
+    }
+
+    /*private boolean copyFile(File src, File dest){
+        try {
+            FileInputStream fis=new FileInputStream(src);
+            FileOutputStream fos = new FileOutputStream(dest);
+
+            byte[] byteArray = new byte[(int) src.length()];
+            int readByte;
+            int bIndex=0;
+            while((readByte = fis.read()) != -1){
+                byteArray[bIndex++] = (byte) readByte;
+            }
+            fis.close();
+
+            fos.write(byteArray);
+            fos.close();
+            return true;
+        }
+
+        catch (IOException e) {
+            showLongToast(e.getMessage());
+            return false;
+        }
+    }*/
+
+    private boolean copyFile(File src, File dest){
+        try {
+            FileInputStream in = new FileInputStream(src);
+            FileOutputStream out = new FileOutputStream(dest);
+
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
+            }
+            in.close();
+            in = null;
+
+            out.flush();
+            out.close();
+            out = null;
+
+            return true;
+
+        }
+        catch (IOException e) {
+            showLongToast(e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean cutFile(File src, File dest){
+        if(copyFile(src,dest) && src.delete()){
+            return true;
+        }
+        return false;
+    }
+
+    private void showProperties(File file){
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setMessage("Properties");
+        String type, path, name, size, used, lastModified, canRead, canWrite, isHidden;
+        String delOne = "\n";
+        String delTwo = "\n\n";
+
+        name="Name: " + file.getName();
+
+        if(file.isFile()) type="Type: File";
+        else type = "Type: Directory";
+
+        String pathFile = file.getAbsolutePath();
+        path="Path: " + pathFile.substring(0, pathFile.lastIndexOf("/")+1);
+
+        size = "Size: "+ getSizeStr(recSizeDir(file));
+        lastModified = "Last Modified: " + new Date(file.lastModified());
+
+        if(file.canRead()) canRead = "Readable: Yes";
+        else canRead = "Raadable: No";
+
+        if(file.canWrite()) canWrite = "Writable: Yes";
+        else canWrite = "Writable: No";
+
+        if(file.isHidden()) isHidden = "Hidden: Yes";
+        else isHidden = "Hidden: No";
+
+        String message = name + delTwo + type + delTwo + path + delTwo + size + delTwo + lastModified + delTwo +
+                canRead + delOne + canWrite + delOne + isHidden;
+
+        dialog.setMessage(message);
+        dialog.show();
     }
 
     private void showDirectoryDialog(File dir, int type){
@@ -508,6 +672,40 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    public static long recSizeDir(File dir){
+        if(dir.isFile())
+            return dir.length();
+
+        long size = 0;
+
+        String[] list = dir.list();
+        if(list==null)
+            return size;
+
+        for(String item : list){
+            File file = new File(dir, item);
+            size += file.length();
+        }
+
+        return size;
+    }
+
+    public static void recRemoveDir(File dir){
+        if(dir.isFile()){
+            dir.delete();
+            return;
+        }
+
+        String[] list = dir.list();
+        if(list==null)
+            return;
+
+        for(String item : list){
+            File file = new File(dir, item);
+            recRemoveDir(file);
+        }
+    }
+
     private void setTxvCurrentDir(){
         txvCurrentDir.setText("Current Dir: " + currentDir);
     }
@@ -542,7 +740,7 @@ public class MainActivity extends AppCompatActivity {
         return recGetAbsTextBoxFileName(currentDir, txtDir.getText().toString());
     }
 
-    private String recGetAbsTextBoxFileName(File dir, String reqDir){
+    public static String recGetAbsTextBoxFileName(File dir, String reqDir){
         if(reqDir.length()>0 && reqDir.charAt(0) == '/') return reqDir;
         else if(reqDir.indexOf("../")==0){
             String tempSend;
@@ -559,10 +757,14 @@ public class MainActivity extends AppCompatActivity {
         else return dir.getAbsolutePath().toString() + "/" + reqDir;
     }
 
-    private boolean isExternalReqTxtDir(){
-        if(currentDir.getAbsolutePath().toString().indexOf(externalDir)==0)
+    private boolean isExternalReq(EditText editText){
+        String fileName = recGetAbsTextBoxFileName(currentDir, editText.getText().toString());
+        File file = new File(fileName);
+
+        if(file.getAbsolutePath().indexOf(externalDir)==0)
             return true;
-        return false;
+        else
+            return false;
     }
 
     private boolean isExtStorageReady(){
@@ -603,18 +805,43 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isHavePermissionToOpenTextBoxFileName(){
-        String fileName=getAbsoluteTextBoxFileName();
-        String textBoxFileName = txtFileName.getText().toString();
+    private boolean canShowDir(File dir){
+        if(isExternalReq(txtDir)){
+            if(!haveStoragePermission()){
+                deniedToast.show();
+                return false;
+            }
+            else if(!isReadableExtStorageReady()){
+                removedExtToast.show();
+                return false;
+            }
+        }
+
+        if(!dir.exists() || !dir.isDirectory()){
+            showLongToast("Directory Not Found");
+            return false;
+        }
+
+        if(!dir.canRead()){
+            accessDeniedToast.show();
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean isHavePermissionToOpenTextBoxFileName(EditText txtFN){
+        String textBoxFileName = txtFN.getText().toString();
+        String fileName=recGetAbsTextBoxFileName(currentDir, textBoxFileName);
 
         if(textBoxFileName.isEmpty()){
-            txtFileName.requestFocus();
+            txtFN.requestFocus();
             return false;
         }
 
         File file = new File(fileName);
 
-        if(isExternalReqTxtDir()) {
+        if(isExternalReq(txtFN)) {
             if (!haveStoragePermission()) {
                 deniedToast.show();
                 return false;
@@ -638,10 +865,13 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private boolean isHavePermissionToWriteTextBoxFileName(){
-        String fileName=getAbsoluteTextBoxFileName();
-        String textBoxFileName = txtFileName.getText().toString();
-        String content=txtContent.getText().toString();
+    private boolean isHavePermissionToOpenTextBoxFileName(){
+        return isHavePermissionToOpenTextBoxFileName(txtFileName);
+    }
+
+    private boolean isHavePermissionToWriteTextBoxFileName(EditText txtFN){
+        String textBoxFileName = txtFN.getText().toString();
+        String fileName=recGetAbsTextBoxFileName(currentDir, textBoxFileName);
         File file=new File(fileName);
         File parent=file.getParentFile();
 
@@ -653,11 +883,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(textBoxFileName.isEmpty()){
-            txtFileName.requestFocus();
+            txtFN.requestFocus();
             return false;
         }
 
-        if(isExternalReqTxtDir()){
+        if(isExternalReq(txtFN)){
             if(!haveStoragePermission()){
                 deniedToast.show();
                 return false;
@@ -671,28 +901,24 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    private boolean isHavePermissionToWriteTextBoxFileName(){
+        return isHavePermissionToWriteTextBoxFileName(txtFileName);
+    }
+
     private void showLongToast(String message){
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
-    private void helpFileName(int type){
-        EditText textBox;
+    public static void helpFileName(Context context, EditText textBox, File curDir,
+                                    int type, boolean getSort, int sortBy, int sortDir){
         String fileName;
         String textBoxStr;
         String txtBoxLastChildName;
         String txtBoxParentName;
 
-        if(type == DIRECTORIES_ONLY){
-            textBox=txtDir;
-            fileName = getAbsoluteTextBoxDir();
-        }
-        else if(type == FILES_ONLY){
-            textBox=txtFileName;
-            fileName=getAbsoluteTextBoxFileName();
-        }
-        else return;
-
         textBoxStr = textBox.getText().toString();
+        fileName=recGetAbsTextBoxFileName(curDir, textBoxStr);
+
         File file=new File(fileName);
         File parentFile;
 
@@ -734,7 +960,8 @@ public class MainActivity extends AppCompatActivity {
             File tf= new File(parentFile.getAbsolutePath(), item);
             boolean correctType;
             if(type == DIRECTORIES_ONLY) correctType=tf.isDirectory();
-            else correctType=tf.isFile();
+            else if(type == FILES_ONLY) correctType=tf.isFile();
+            else correctType=true;
 
             if(item.indexOf(txtBoxLastChildName)==0 && correctType)
                 tempOffersList[olIndex++]=item;
@@ -748,33 +975,58 @@ public class MainActivity extends AppCompatActivity {
 
         tempOffersList = null;
 
-        FileOpen.sortFiles(filesOffersList, getSortByMethod(), getSortDir());
+        if(getSort)
+            FileOpen.sortFiles(filesOffersList, sortBy, sortDir);
 
         if(filesOffersList.length==1){
             String tempStr;
-            if(txtBoxParentName.isEmpty())
-                tempStr = filesOffersList[0].getName();
+            if(txtBoxParentName.isEmpty()){
+                if(position == 0)
+                    tempStr = "/" + filesOffersList[0].getName();
+                else
+                    tempStr = filesOffersList[0].getName();
+
+            }
             else
                 tempStr = txtBoxParentName+"/"+filesOffersList[0].getName();
 
-            if(type==DIRECTORIES_ONLY) tempStr=tempStr+"/";
+            if(filesOffersList[0].isDirectory()) tempStr=tempStr+"/";
 
             textBox.setText(tempStr);
             textBox.setSelection(textBox.getText().length());
         }
         else if(filesOffersList.length>1){
             AlertDialog.Builder dialog;
-            dialog=new AlertDialog.Builder(this);
+            dialog=new AlertDialog.Builder(context);
             StringBuilder sb = new StringBuilder();
 
             for(int i=0; filesOffersList.length>i; i++){
+                String tempConstStr;
+                if(type == FILES_ONLY || type == DIRECTORIES_ONLY)
+                    tempConstStr = "* ";
+                else{
+                    if(filesOffersList[i].isFile())
+                        tempConstStr = "* File: ";
+                    else
+                        tempConstStr = "* Directory: ";
+                }
+
                 if(sb.toString().length()>0) sb.append("\n");
-                sb.append("* " + filesOffersList[i].getName());
+                sb.append(tempConstStr + filesOffersList[i].getName());
             }
 
             dialog.setMessage(sb.toString());
             dialog.show();
         }
+    }
+
+    private void helpFileName(int type){
+        EditText textBox;
+
+        if(type == DIRECTORIES_ONLY) textBox = txtDir;
+        else textBox = txtFileName;
+
+        helpFileName(this, textBox, currentDir, type, true, getSortByMethod(), getSortDir());
     }
 
     private int getSortByMethod(){
@@ -793,61 +1045,68 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getSDCardDirInDialog(){
-        LayoutInflater inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View view = inflater.inflate(R.layout.dialog_getstr, null);
-        final AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
+        String defaultStr;
+        if(sdcardDir!=null || !sdcardDir.equals(""))
+            defaultStr=sdcardDir;
+        else
+            defaultStr="/";
 
-        final EditText txtGetInput = view.findViewById(R.id.txtInput);
-        if(sdcardDir==null || sdcardDir.equals("")) txtGetInput.setText("/");
-        else txtGetInput.setText(sdcardDir);
-        txtGetInput.setSelection(txtGetInput.getText().toString().length());
+        final GetFileNameDialog alert = new GetFileNameDialog(this, R.layout.dialog_getstr,
+                R.id.txtInput, defaultStr, "SDCard Dir", "Please enter your sdcard root directory!",
+                 currentDir, DIRECTORIES_ONLY);
 
-        dialog.setTitle("SDCard Dir");
-        dialog.setMessage("Please enter your sdcard root directory!");
-        dialog.setView(view);
-
-        dialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                tempStr = txtGetInput.getText().toString();
+                tempStr = alert.getTxtGetInput().getText().toString();
                 if(tempStr.isEmpty()) return;
                 String fileName = recGetAbsTextBoxFileName(currentDir, tempStr);
                 File file = new File(fileName);
-                if(file.exists() && file.isDirectory())
+                if(file.exists() && file.isDirectory()){
                     sdcardDir = file.getAbsolutePath().toString() + "/";
+                    txtDir.setText(sdcardDir);
+                    txtDir.requestFocus();
+                    txtDir.setSelection(txtDir.getText().length());
+                    setTxvStorages();
+                    showLongToast("SDCard Directory Setted");
+                }
+
                 else
                     showLongToast("Directory Not Found");
-
-                txtDir.setText(sdcardDir);
-                txtDir.requestFocus();
-                txtDir.setSelection(txtDir.getText().length());
-                setTxvStorages();
             }
         });
 
-        dialog.setNegativeButton("Cancel", null);
-        final AlertDialog myDialog = dialog.create();
-        myDialog.show();
+        alert.setNegativeButton("Cancel", null);
+        alert.createDialog();
+        alert.showDialog();
+    }
 
-        txtGetInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+    public static String getSizeStr(long size){
+        long kb = 1024;
+        long mb = kb * 1024;
+        long gb = mb * 1024;
+        String out;
 
-            }
+        if(size > gb){
+            double gbSize = (double) size / gb;
+            out = String.format("%.2f", gbSize) + " GB";
+            out += " (" + String.format("%,d", size) + " Bytes)";
+        }
+        else if(size>mb){
+            double mbSize = (double) size / mb;
+            out = String.format("%.2f", mbSize) + " MB";
+            out += " (" + String.format("%,d", size) + " Bytes)";
+        }
+        else if(size>kb){
+            double kbSize = (double) size / kb;
+            out = String.format("%.2f", kbSize) + " KB";
+            out += " (" + String.format("%,d", size) + " Bytes)";
+        }
+        else{
+            out = String.valueOf(size) + " Bytes";
+        }
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                if(txtGetInput.getText().toString().isEmpty())
-                    ((AlertDialog)myDialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                else
-                    ((AlertDialog)myDialog).getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-            }
-        });
+        return out;
     }
 }
 
