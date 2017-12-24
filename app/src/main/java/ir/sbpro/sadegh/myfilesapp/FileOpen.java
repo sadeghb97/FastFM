@@ -12,6 +12,7 @@ public class FileOpen {
     final static int SORT_BY_NAME = 1;
     final static int SORT_BY_SIZE = 2;
     final static int SORT_BY_MODIFIED = 3;
+    final static int SORT_BY_DEEP_SIZE = 4;
 
     public static void openFile(Context context, File url) throws IOException {
         // Create URI
@@ -74,9 +75,9 @@ public class FileOpen {
             for(int j=i+1; filesList.length>j; j++){
                 boolean change = false;
                 if(sortBy==SORT_BY_NAME){
-                    if(sortDir==SORT_ASCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) < 0)
+                    if(sortDir==SORT_ASCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) > 0)
                         change=true;
-                    else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) > 0)
+                    else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) < 0)
                         change=true;
                 }
                 else if(sortBy==SORT_BY_SIZE){
@@ -89,6 +90,17 @@ public class FileOpen {
                     if(sortDir==SORT_ASCENDING && filesList[chosenIndex].lastModified()>filesList[j].lastModified())
                         change=true;
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].lastModified()<filesList[j].lastModified())
+                        change=true;
+                }
+                else if(sortBy==SORT_BY_DEEP_SIZE){
+                    FileDetails fdChosen = new FileDetails(filesList[chosenIndex]);
+                    FileDetails fdItem = new FileDetails(filesList[j]);
+                    fdChosen.makeDetails();
+                    fdItem.makeDetails();
+
+                    if(sortDir==SORT_ASCENDING && fdChosen.getSize()>fdItem.getSize())
+                        change=true;
+                    else if(sortDir==SORT_DESCENDING && fdChosen.getSize()<fdItem.getSize())
                         change=true;
                 }
 

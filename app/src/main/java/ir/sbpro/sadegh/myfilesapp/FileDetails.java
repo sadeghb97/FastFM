@@ -15,6 +15,7 @@ public class FileDetails {
     private int numFiles;
     private int numDirs;
     private long size;
+    private long freeSize;
 
 
     FileDetails(File file){
@@ -67,6 +68,7 @@ public class FileDetails {
         size=0;
 
         recDetails(this.file);
+        freeSize=this.file.getFreeSpace();
     }
 
     private void recDetails(File file){
@@ -122,5 +124,9 @@ public class FileDetails {
 
     public long getSize() {
         return size;
+    }
+
+    public long getFreeSize() {
+        return freeSize;
     }
 }

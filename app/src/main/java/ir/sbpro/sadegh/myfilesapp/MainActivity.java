@@ -1,11 +1,14 @@
 package ir.sbpro.sadegh.myfilesapp;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -30,6 +33,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
     final static int DIRECTORIES_ONLY = 1;
@@ -38,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     final static int UNKNOWN = -1000;
 
     final static int MAX_FILE_SIZE = 1024*500 ;
+
+    ProgressDialog pd;
 
     EditText txtFileName, txtContent, txtDir;
     TextView txvCurrentDir;
@@ -141,6 +148,17 @@ public class MainActivity extends AppCompatActivity {
                 String fileName=getAbsoluteTextBoxFileName();
                 String content=txtContent.getText().toString();
                 File file=new File(fileName);
+                File parent = file.getParentFile();
+
+                if(parent==null){
+                    showLongToast("Parent Directory Not Found!");
+                    return;
+                }
+
+                if(content.length()>parent.getFreeSpace()){
+                    showLongToast("No enough space!");
+                    return;
+                }
 
                 if(isHavePermissionToWriteTextBoxFileName())
                     writeFile(file, content.getBytes());
@@ -214,6 +232,10 @@ public class MainActivity extends AppCompatActivity {
                             File dest = new File(destFileName);
 
                             if (isHavePermissionToWriteTextBoxFileName(reqDestDialog.getTxtGetInput())) {
+                                if(file.length() > dest.getParentFile().getFreeSpace()){
+                                    showLongToast("No enough space!");
+                                    return;
+                                }
 
                                 if (copyFile(file, dest))
                                     showLongToast("File Copied");
@@ -446,21 +468,32 @@ public class MainActivity extends AppCompatActivity {
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
                             final File dest = new File(destFileName);
-                            if(dest.exists()){
-                                showLongToast(dest.getAbsolutePath());
-                                new SureDialog(MainActivity.this, "The same filename already exists, " +
-                                        "Do you want to owerwrite?", new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if(recCopyDir(dir, dest)) showLongToast("Directory Copied!");
-                                        else showLongToast("The Directory can not be copied!");
-                                    }
-                                }, null).show();
-                            }
+                            FileDetails fdDir = new FileDetails(dir);
+                            fdDir.makeDetails();
 
-                            else{
-                                if(recCopyDir(dir, dest)) showLongToast("Directory Copied!");
-                                else showLongToast("The Directory can not be copied!");
+                            if(canMakeDir(dest)){
+                                if(fdDir.getSize()>dest.getFreeSpace()){
+                                    showLongToast("No enough space!");
+                                    return;
+                                }
+
+                                if (dest.exists()) {
+                                    showLongToast(dest.getAbsolutePath());
+                                    new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                            "Do you want to owerwrite?", new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (recCopyDir(dir, dest))
+                                                showLongToast("Directory Copied!");
+                                            else showLongToast("The Directory can not be copied!");
+                                        }
+                                    }, null).show();
+                                }
+
+                                else {
+                                    if (recCopyDir(dir, dest)) showLongToast("Directory Copied!");
+                                    else showLongToast("The Directory can not be copied!");
+                                }
                             }
                         }
                     });
@@ -475,7 +508,58 @@ public class MainActivity extends AppCompatActivity {
         btnCutDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                final File dir;
 
+                if(txtDir.getText().toString().isEmpty()){
+                    dir=currentDir;
+                }
+                else{
+                    String txtDirStr= getAbsoluteTextBoxDir();
+                    dir=new File(txtDirStr);
+                }
+
+                if(canChangeDir(dir)){
+                    final GetFileNameDialog reqDestDialog = new GetFileNameDialog(MainActivity.this,
+                            R.layout.dialog_getstr, R.id.txtInput, "", "Destination",
+                            "Please Enter Destination File Name", currentDir, BOTH);
+
+                    reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String destFileName = recGetAbsTextBoxFileName(currentDir,
+                                    reqDestDialog.getTxtGetInput().getText().toString());
+                            final File dest = new File(destFileName);
+                            if(dest.exists()){
+                                showLongToast(dest.getAbsolutePath());
+                                new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                        "Do you want to owerwrite?", new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if(recCutDir(dir, dest)){
+                                            showLongToast("Directory Moved!");
+                                            repairCurrentDir();
+                                            setTxvCurrentDir();
+                                        }
+                                        else showLongToast("The Directory can not be moved!");
+                                    }
+                                }, null).show();
+                            }
+
+                            else{
+                                if(recCutDir(dir, dest)){
+                                    showLongToast("Directory Moved!");
+                                    repairCurrentDir();
+                                    setTxvCurrentDir();
+                                }
+                                else showLongToast("The Directory can not be moved!");
+                            }
+                        }
+                    });
+
+                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.createDialog();
+                    reqDestDialog.showDialog();
+                }
             }
         });
 
@@ -570,6 +654,14 @@ public class MainActivity extends AppCompatActivity {
                         .setTitle("Storage State")
                         .setMessage(strStorages + "\n\n" + strExternalState)
                         .show();
+                return false;
+            }
+        });
+
+        menu.add("Space Monitor").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                showSizeMonitorDialog(currentDir);
                 return false;
             }
         });
@@ -689,9 +781,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean cutFile(File src, File dest){
-        if(copyFile(src,dest) && src.delete()){
-            return true;
-        }
+        if(src.renameTo(dest)) return true;
+        if(copyFile(src,dest) && src.delete()) return true;
         return false;
     }
 
@@ -744,6 +835,71 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private void showSizeMonitorDialog(final File dir){
+        final AlertDialog.Builder dialog=new AlertDialog.Builder(this);
+        final String constStr="Showing Directory: "+dir.getAbsolutePath().toString()+"\n\n";
+
+        if(!dir.isDirectory()) dialog.setMessage(constStr + "Directory Does not Exists!");
+        else{
+            pd = new ProgressDialog(this);
+            pd.setTitle("Analysing");
+            pd.setMessage("Please wait ...");
+            pd.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            pd.setCancelable(false);
+            pd.show();
+
+            final StringBuilder sb=new StringBuilder();
+            final FileDetails fdOrg = new FileDetails(dir);
+            fdOrg.makeDetails();
+
+            final Handler handler = new Handler() {
+                @Override
+                public void handleMessage(Message msg) {
+                    if(msg.what==0){
+                        pd.dismiss();
+                        dialog.setMessage(constStr + sb.toString());
+                        dialog.show();
+                    }
+
+                }
+            };
+
+            Thread thread = new Thread(){
+                @Override
+                public void run() {
+                    super.run();
+
+                    sb.append("Size: " + FileDetails.getSizeStr(fdOrg.getSize()) + "\n");
+                    sb.append("Free Space: " + FileDetails.getSizeStr(fdOrg.getFreeSize()) + "\n");
+                    sb.append("\n");
+
+                    File[] filesList = dir.listFiles();
+                    FileOpen.sortFiles(filesList, FileOpen.SORT_BY_DEEP_SIZE, FileOpen.SORT_DESCENDING);
+
+                    boolean first = true;
+                    for(File ios : filesList){
+                        FileDetails fd =new FileDetails(ios);
+                        fd.makeDetails();
+                        String itemStr = "";
+
+                        if(ios.isDirectory()) itemStr = "* Directory: " + ios.getName() + "\n";
+                        else if(ios.isFile()) itemStr = "* File: " + ios.getName() + "\n";
+                        itemStr+=("Size: " + FileDetails.getSizeStr(fd.getSize()));
+
+                        if(!first) sb.append("\n\n");
+                        sb.append(itemStr);
+
+                        first=false;
+                    }
+
+                    handler.sendEmptyMessage(0);
+                }
+            };
+
+            thread.start();
+        }
+    }
+
     public boolean recCopyDir(File src, final File dest){
         File parentDest = dest.getParentFile();
         if(parentDest==null || !parentDest.exists()){
@@ -759,15 +915,46 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String[] list = src.list();
-        for(String item : list){
-            File file = new File(src, item);
-            File destFile = new File(dest, item);
+        if(list!=null){
+            for(String item : list){
+                File file = new File(src, item);
+                File destFile = new File(dest, item);
 
-            if(file.isFile()) copyFile(file, destFile);
-            else recCopyDir(file, destFile);
+                if(file.isFile()) copyFile(file, destFile);
+                else recCopyDir(file, destFile);
+            }
         }
 
         return true;
+    }
+
+    public boolean recCutDir(File src, final File dest){
+        File parentDest = dest.getParentFile();
+        if(parentDest==null || !parentDest.exists()){
+            showLongToast("Parent Directory Not Found!");
+            return false;
+        }
+
+        if(!dest.exists()){
+            if(!dest.mkdir()){
+                showLongToast("The Dest Directory can not be created!");
+                return false;
+            }
+        }
+
+        String[] list = src.list();
+        if(list!=null) {
+            for (String item : list) {
+                File file = new File(src, item);
+                File destFile = new File(dest, item);
+
+                if (file.isFile()) cutFile(file, destFile);
+                else recCutDir(file, destFile);
+            }
+        }
+
+        if(recRemoveDir(src)) return true;
+        return false;
     }
 
     public static boolean recRemoveDir(File dir){
@@ -971,6 +1158,16 @@ public class MainActivity extends AppCompatActivity {
 
         if(!dir.canWrite()){
             accessDeniedToast.show();
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean canMakeDir(File dir){
+        File parent = dir.getParentFile();
+        if(parent!=null && !parent.isDirectory()){
+            showLongToast("Parent Directory Not Found!");
             return false;
         }
 
