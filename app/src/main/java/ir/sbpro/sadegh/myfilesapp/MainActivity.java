@@ -312,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
         btnSDCardDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(sdcardDir==null && sdcardDir.equals("")) {
+                if(sdcardDir==null || sdcardDir.equals("")) {
                     getSDCardDirInDialog();
                 }
                 else{
@@ -661,7 +661,8 @@ public class MainActivity extends AppCompatActivity {
         menu.add("Space Monitor").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                showSizeMonitorDialog(currentDir);
+                FileSpaceMonitor fsm = new FileSpaceMonitor(currentDir);
+                fsm.showSizeMonitorDialog(MainActivity.this);
                 return false;
             }
         });
@@ -835,71 +836,6 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void showSizeMonitorDialog(final File dir){
-        final AlertDialog.Builder dialog=new AlertDialog.Builder(this);
-        final String constStr="Showing Directory: "+dir.getAbsolutePath().toString()+"\n\n";
-
-        if(!dir.isDirectory()) dialog.setMessage(constStr + "Directory Does not Exists!");
-        else{
-            pd = new ProgressDialog(this);
-            pd.setTitle("Analysing");
-            pd.setMessage("Please wait ...");
-            pd.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            pd.setCancelable(false);
-            pd.show();
-
-            final StringBuilder sb=new StringBuilder();
-            final FileDetails fdOrg = new FileDetails(dir);
-            fdOrg.makeDetails();
-
-            final Handler handler = new Handler() {
-                @Override
-                public void handleMessage(Message msg) {
-                    if(msg.what==0){
-                        pd.dismiss();
-                        dialog.setMessage(constStr + sb.toString());
-                        dialog.show();
-                    }
-
-                }
-            };
-
-            Thread thread = new Thread(){
-                @Override
-                public void run() {
-                    super.run();
-
-                    sb.append("Size: " + FileDetails.getSizeStr(fdOrg.getSize()) + "\n");
-                    sb.append("Free Space: " + FileDetails.getSizeStr(fdOrg.getFreeSize()) + "\n");
-                    sb.append("\n");
-
-                    File[] filesList = dir.listFiles();
-                    FileOpen.sortFiles(filesList, FileOpen.SORT_BY_DEEP_SIZE, FileOpen.SORT_DESCENDING);
-
-                    boolean first = true;
-                    for(File ios : filesList){
-                        FileDetails fd =new FileDetails(ios);
-                        fd.makeDetails();
-                        String itemStr = "";
-
-                        if(ios.isDirectory()) itemStr = "* Directory: " + ios.getName() + "\n";
-                        else if(ios.isFile()) itemStr = "* File: " + ios.getName() + "\n";
-                        itemStr+=("Size: " + FileDetails.getSizeStr(fd.getSize()));
-
-                        if(!first) sb.append("\n\n");
-                        sb.append(itemStr);
-
-                        first=false;
-                    }
-
-                    handler.sendEmptyMessage(0);
-                }
-            };
-
-            thread.start();
-        }
-    }
-
     public boolean recCopyDir(File src, final File dest){
         File parentDest = dest.getParentFile();
         if(parentDest==null || !parentDest.exists()){
@@ -982,13 +918,16 @@ public class MainActivity extends AppCompatActivity {
         String print;
         String[] list = dirPath.split("/");
 
-        if(list[0].equals("")) dirStrBuilder.append("/");
-        for(String item : list){
-            if(item.equals("")) continue;
-            if(item.length()>18) dirStrBuilder.append(item.substring(0, 15) + "...");
-            else dirStrBuilder.append(item);
-            dirStrBuilder.append("/");
+        if(list.length>0) {
+            if (list[0].equals("")) dirStrBuilder.append("/");
+            for (String item : list) {
+                if (item.equals("")) continue;
+                if (item.length() > 18) dirStrBuilder.append(item.substring(0, 15) + "...");
+                else dirStrBuilder.append(item);
+                dirStrBuilder.append("/");
+            }
         }
+        else dirStrBuilder.append("/");
 
         String dirStr=dirStrBuilder.toString();
         int dirStrLength = dirStr.length();
@@ -1001,7 +940,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setTxvStorages(){
         strStorages = "Internal Directory:\n" + externalDir + "\n\n" + "SDCard Directory:\n";
-        if(sdcardDir != null || !sdcardDir.equals(""))
+        if(sdcardDir != null && !sdcardDir.equals(""))
             strStorages+=sdcardDir;
         else
             strStorages+="Unknown";
@@ -1062,15 +1001,15 @@ public class MainActivity extends AppCompatActivity {
         else if(reqDir.isEmpty() || reqDir.equals(".")) return dir.getAbsolutePath().toString();
         else if(reqDir.equals("..")){
             if(dir.getParentFile()!=null) return dir.getParentFile().getAbsolutePath();
-            else return null;
+            else return dir.getAbsolutePath();
         }
 
         else if(reqDir.lastIndexOf("/..")>=0 && reqDir.lastIndexOf("/..")==reqDir.length()-3){
-            if(reqDir.length()==3) return null;
+            if(reqDir.length()==3) return "/";
 
             File temp = new File(recGetAbsTextBoxFileName(dir, reqDir.substring(0, reqDir.length()-3)));
             if(temp.getParentFile()!=null) return temp.getParentFile().getAbsolutePath();
-            else return null;
+            else return temp.getAbsolutePath();
         }
         else if(reqDir.lastIndexOf("/.")>=0 && reqDir.lastIndexOf("/.")==reqDir.length()-2){
             if(reqDir.length()==2) return "/";
@@ -1388,10 +1327,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void getSDCardDirInDialog(){
         String defaultStr;
-        if(sdcardDir!=null || !sdcardDir.equals(""))
-            defaultStr=sdcardDir;
-        else
+        if(sdcardDir==null || sdcardDir.equals(""))
             defaultStr="/";
+        else
+            defaultStr=sdcardDir;
 
         final GetFileNameDialog alert = new GetFileNameDialog(this, R.layout.dialog_getstr,
                 R.id.txtInput, defaultStr, "SDCard Dir", "Please enter your sdcard root directory!",

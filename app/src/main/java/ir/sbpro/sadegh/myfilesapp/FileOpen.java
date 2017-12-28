@@ -92,17 +92,6 @@ public class FileOpen {
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].lastModified()<filesList[j].lastModified())
                         change=true;
                 }
-                else if(sortBy==SORT_BY_DEEP_SIZE){
-                    FileDetails fdChosen = new FileDetails(filesList[chosenIndex]);
-                    FileDetails fdItem = new FileDetails(filesList[j]);
-                    fdChosen.makeDetails();
-                    fdItem.makeDetails();
-
-                    if(sortDir==SORT_ASCENDING && fdChosen.getSize()>fdItem.getSize())
-                        change=true;
-                    else if(sortDir==SORT_DESCENDING && fdChosen.getSize()<fdItem.getSize())
-                        change=true;
-                }
 
                 if(change){
                     chosenIndex=j;
