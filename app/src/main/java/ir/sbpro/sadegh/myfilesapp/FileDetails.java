@@ -2,6 +2,8 @@ package ir.sbpro.sadegh.myfilesapp;
 
 import android.content.Context;
 import android.support.v7.app.AlertDialog;
+import android.util.Log;
+import android.widget.Toast;
 
 import java.io.File;
 import java.util.Date;
@@ -83,7 +85,10 @@ public class FileDetails {
         File[] list = file.listFiles();
         if(list==null) return;
 
-        for(File item : list) recDetails(item);
+        for(File item : list){
+            recDetails(item);
+            Log.d("Path", item.getAbsolutePath());
+        }
     }
 
     public static String getSizeStr(long size){

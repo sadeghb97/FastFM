@@ -47,13 +47,16 @@ public class FileOpen {
         } else if(url.toString().contains(".gif")) {
             // GIF file
             intent.setDataAndType(uri, "image/gif");
-        } else if(url.toString().contains(".jpg") || url.toString().contains(".jpeg") || url.toString().contains(".png")) {
+        } else if(url.toString().contains(".jpg") || url.toString().contains(".jpeg") ||
+                url.toString().contains(".png")) {
             // JPG file
             intent.setDataAndType(uri, "image/jpeg");
         } else if(url.toString().contains(".txt")) {
             // Text file
             intent.setDataAndType(uri, "text/plain");
-        } else if(url.toString().contains(".3gp") || url.toString().contains(".mpg") || url.toString().contains(".mpeg") || url.toString().contains(".mpe") || url.toString().contains(".mp4") || url.toString().contains(".avi")) {
+        } else if(url.toString().contains(".3gp") || url.toString().contains(".mpg") ||
+                url.toString().contains(".mpeg") || url.toString().contains(".mpe") ||
+                url.toString().contains(".mp4") || url.toString().contains(".avi")) {
             // Video files
             intent.setDataAndType(uri, "video/*");
         } else {

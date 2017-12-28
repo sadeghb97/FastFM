@@ -439,7 +439,7 @@ public class MainActivity extends AppCompatActivity {
                     dir=new File(txtDirStr);
                 }
 
-                if(canShowDir(dir))
+                if(canShowDir(dir) && isUserStorage(dir))
                     new FileDetails(dir).showProperties(MainActivity.this);
             }
         });
@@ -661,8 +661,10 @@ public class MainActivity extends AppCompatActivity {
         menu.add("Space Monitor").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                FileSpaceMonitor fsm = new FileSpaceMonitor(currentDir);
-                fsm.showSizeMonitorDialog(MainActivity.this);
+                if(canShowDir(currentDir) && isUserStorage(currentDir)){
+                    FileSpaceMonitor fsm = new FileSpaceMonitor(currentDir);
+                    fsm.showSizeMonitorDialog(MainActivity.this);
+                }
                 return false;
             }
         });
@@ -1184,6 +1186,17 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isHavePermissionToWriteTextBoxFileName(){
         return isHavePermissionToWriteTextBoxFileName(txtFileName);
+    }
+
+    private boolean isUserStorage(File file){
+        String fn = file.getAbsolutePath();
+        if(fn.indexOf(externalDir)==0) return true;
+        if(sdcardDir!=null && !sdcardDir.equals("") && fn.indexOf(sdcardDir)==0) return true;
+        if(fn.equals("/") || fn.equals("/sys") || fn.indexOf("/sys/")==0){
+            accessDeniedToast.show();
+            return false;
+        }
+        return true;
     }
 
     private void showLongToast(String message){
