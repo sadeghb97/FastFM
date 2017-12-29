@@ -638,7 +638,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         String fileName = txtFileName.getText().toString();
 
-        spEditor.putString("current-dir", currentDir.getAbsolutePath().toString());
+        spEditor.putString("current-dir", currentDir.getAbsolutePath());
         spEditor.putString("sdcdir", sdcardDir);
         spEditor.putInt("sortby", getSortByMethod());
         spEditor.putInt("sortdir", getSortDir());
@@ -792,7 +792,7 @@ public class MainActivity extends AppCompatActivity {
     private void showDirectoryDialog(File dir, int type){
         boolean showFile, showDir;
         AlertDialog.Builder dialog=new AlertDialog.Builder(this);
-        String constStr="Showing Directory: "+dir.getAbsolutePath().toString()+"\n\n";
+        String constStr="Showing Directory: "+dir.getAbsolutePath()+"\n\n";
         if(type==1){
             showFile=false;
             showDir=true;
@@ -813,7 +813,7 @@ public class MainActivity extends AppCompatActivity {
 
             File[] filesList = new File[list.length];
             for(int i=0; list.length>i; i++){
-                filesList[i]=new File(dir.getAbsolutePath().toString(), list[i]);
+                filesList[i]=new File(dir.getAbsolutePath(), list[i]);
             }
 
             FileOpen.sortFiles(filesList, getSortByMethod(), getSortDir());
