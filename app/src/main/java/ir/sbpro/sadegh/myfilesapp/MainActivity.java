@@ -73,8 +73,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        internalFilesDir = getFilesDir().getAbsolutePath().toString();
-        externalDir = Environment.getExternalStorageDirectory().getAbsolutePath().toString();
+        internalFilesDir = getFilesDir().getAbsolutePath();
+        externalDir = Environment.getExternalStorageDirectory().getAbsolutePath();
         sdcardDir=null;
 
         if(!haveStoragePermission()) getStoragePermission();
@@ -188,7 +188,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         FileOpen.openFile(MainActivity.this, file);
                     } catch (IOException e) {
-                        Toast.makeText(MainActivity.this, e.getMessage().toString(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 }
             }
@@ -685,7 +685,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "File Written!", Toast.LENGTH_LONG).show();
         }
         catch (IOException e) {
-            if(e.getMessage().toString().contains("Permission denied")){
+            if(e.getMessage().contains("Permission denied")){
                 accessDeniedToast.show();
                 return;
             }
@@ -1000,7 +1000,7 @@ public class MainActivity extends AppCompatActivity {
 
             return recGetAbsTextBoxFileName(dir, tempSend);
         }
-        else if(reqDir.isEmpty() || reqDir.equals(".")) return dir.getAbsolutePath().toString();
+        else if(reqDir.isEmpty() || reqDir.equals(".")) return dir.getAbsolutePath();
         else if(reqDir.equals("..")){
             if(dir.getParentFile()!=null) return dir.getParentFile().getAbsolutePath();
             else return dir.getAbsolutePath();
@@ -1203,7 +1203,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
-    public static void helpFileName(Context context, EditText textBox, File curDir,
+    public static void helpFileName(Context context, final EditText textBox, File curDir,
                                     int type, boolean getSort, int sortBy, int sortDir){
         String fileName;
         String textBoxStr;
@@ -1243,29 +1243,26 @@ public class MainActivity extends AppCompatActivity {
             txtBoxLastChildName = textBoxStr;
         }
 
-        String[] filesList= parentFile.list();
-
+        File[] filesList= parentFile.listFiles();
         if(filesList==null || filesList.length==0) return;
 
-        String[] tempOffersList = new String[filesList.length];
+        File[] tempOffersList = new File[filesList.length];
         int olIndex=0;
 
-        for(String item : filesList){
-            File tf= new File(parentFile.getAbsolutePath(), item);
+        for(File item : filesList){
             boolean correctType;
-            if(type == DIRECTORIES_ONLY) correctType=tf.isDirectory();
-            else if(type == FILES_ONLY) correctType=tf.isFile();
+            if(type == DIRECTORIES_ONLY) correctType=item.isDirectory();
+            else if(type == FILES_ONLY) correctType=item.isFile();
             else correctType=true;
 
-            if(item.indexOf(txtBoxLastChildName)==0 && correctType)
+            if(item.getName().indexOf(txtBoxLastChildName)==0 && correctType)
                 tempOffersList[olIndex++]=item;
         }
 
         File []filesOffersList=new File[olIndex];
 
-        for(int i=0; olIndex>i; i++){
-            filesOffersList[i]=new File(parentFile.getAbsolutePath(), tempOffersList[i]);
-        }
+        for(int i=0; olIndex>i; i++)
+            filesOffersList[i] = tempOffersList[i];
 
         tempOffersList = null;
 
@@ -1279,7 +1276,6 @@ public class MainActivity extends AppCompatActivity {
                     tempStr = "/" + filesOffersList[0].getName();
                 else
                     tempStr = filesOffersList[0].getName();
-
             }
             else
                 tempStr = txtBoxParentName+"/"+filesOffersList[0].getName();
@@ -1290,26 +1286,52 @@ public class MainActivity extends AppCompatActivity {
             textBox.setSelection(textBox.getText().length());
         }
         else if(filesOffersList.length>1){
+            String like = filesOffersList[0].getName();
             AlertDialog.Builder dialog;
             dialog=new AlertDialog.Builder(context);
             StringBuilder sb = new StringBuilder();
 
             for(int i=0; filesOffersList.length>i; i++){
+                File item = filesOffersList[i];
+                if(!like.equals(txtBoxLastChildName)) like=getMaxLengthCommonString(like, item.getName());
+
                 String tempConstStr;
                 if(type == FILES_ONLY || type == DIRECTORIES_ONLY)
                     tempConstStr = "* ";
                 else{
-                    if(filesOffersList[i].isFile())
+                    if(item.isFile())
                         tempConstStr = "* File: ";
                     else
                         tempConstStr = "* Directory: ";
                 }
 
                 if(sb.toString().length()>0) sb.append("\n");
-                sb.append(tempConstStr + filesOffersList[i].getName());
+                sb.append(tempConstStr + item.getName());
             }
 
+            String tempRes = textBox.getText().toString();
+            if(!like.equals(txtBoxLastChildName)){
+                if(txtBoxParentName.isEmpty()){
+                    if(position == 0)
+                        tempRes = "/" + like;
+                    else
+                        tempRes = like;
+                }
+                else
+                    tempRes = txtBoxParentName+"/"+like;
+            }
+
+            final String textBoxResult = tempRes;
+            tempRes=null;
+
             dialog.setMessage(sb.toString());
+            dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    textBox.setText(textBoxResult);
+                    textBox.setSelection(textBox.getText().length());
+                }
+            });
             dialog.show();
         }
     }
@@ -1357,7 +1379,7 @@ public class MainActivity extends AppCompatActivity {
                 String fileName = recGetAbsTextBoxFileName(currentDir, tempStr);
                 File file = new File(fileName);
                 if(file.exists() && file.isDirectory()){
-                    sdcardDir = file.getAbsolutePath().toString() + "/";
+                    sdcardDir = file.getAbsolutePath() + "/";
                     txtDir.setText(sdcardDir);
                     txtDir.requestFocus();
                     txtDir.setSelection(txtDir.getText().length());
@@ -1373,6 +1395,33 @@ public class MainActivity extends AppCompatActivity {
         alert.setNegativeButton("Cancel", null);
         alert.createDialog();
         alert.showDialog();
+    }
+
+    public static String getMaxLengthCommonString(String strOne, String strTwo){
+        String bigStr, like;
+        if(strOne.length()>strTwo.length()){
+            bigStr=strOne;
+            like=strTwo;
+        }
+        else{
+            bigStr=strTwo;
+            like=strOne;
+        }
+
+        boolean findLike=false;
+
+        for (int j = 0; like.length() > j; j++) {
+            String smallSub = like.substring(0, like.length() - j);
+            String likeSub = bigStr.substring(0, like.length() - j);
+            if(smallSub.equals(likeSub)){
+                like=likeSub;
+                findLike=true;
+                break;
+            }
+        }
+        if(!findLike) like="";
+
+        return like;
     }
 }
 
