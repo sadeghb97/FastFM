@@ -1,11 +1,14 @@
 package ir.sbpro.sadegh.myfilesapp;
 
 import android.Manifest;
+import android.accessibilityservice.AccessibilityService;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
@@ -15,14 +18,17 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,8 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
     final static int MAX_FILE_SIZE = 1024*500 ;
 
-    ProgressDialog pd;
-
+    ScrollView scrollView;
     EditText txtFileName, txtContent, txtDir;
     TextView txvCurrentDir;
     String strStorages, strExternalState;
@@ -79,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(!haveStoragePermission()) getStoragePermission();
 
+        scrollView=findViewById(R.id.scrollView);
         txtFileName=findViewById(R.id.txtFileName);
         txtContent=findViewById(R.id.txtContent);
         txtDir=findViewById(R.id.txtDir);
@@ -629,6 +635,20 @@ public class MainActivity extends AppCompatActivity {
                 dialog.setTitle("Current Directory");
                 dialog.setPositiveButton("OK", null);
                 dialog.show();
+            }
+        });
+
+        txtDir.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, final boolean hasFocus) {
+                txtDirFullScroll();
+            }
+        });
+
+        txtDir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                txtDirFullScroll();
             }
         });
     }
@@ -1422,6 +1442,16 @@ public class MainActivity extends AppCompatActivity {
         if(!findLike) like="";
 
         return like;
+    }
+
+    public void txtDirFullScroll(){
+        if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            }
+        }, 210);
     }
 }
 

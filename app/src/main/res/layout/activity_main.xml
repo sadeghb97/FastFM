@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:layout_margin="16dp">
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" >
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical" >
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <EditText
             android:id="@+id/txtFileName"
@@ -21,9 +23,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"
-            android:maxLines="3"
             android:hint="Content"
-            android:inputType="textMultiLine" />
+            android:inputType="textMultiLine"
+            android:maxLines="6" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -109,11 +111,11 @@
             android:id="@+id/txtDir"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
             android:layout_marginTop="24dp"
-            android:text=""
-            android:hint="Directory" />
+            android:ems="10"
+            android:hint="Directory"
+            android:inputType="text"
+            android:text="" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -230,16 +232,16 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:text="Sort By"
-            android:textSize="16sp"
-            android:textColor="#0711d9" />
+            android:textColor="#0711d9"
+            android:textSize="16sp" />
 
         <RadioGroup
             android:id="@+id/rgSortBy"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:layout_marginLeft="48dp"
             android:layout_marginRight="48dp"
+            android:layout_marginTop="4dp"
             android:gravity="center"
             android:orientation="horizontal">
 
