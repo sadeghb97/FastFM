@@ -31,6 +31,14 @@ public class Log {
         this.progress=0;
     }
 
+    Log(String title, long max, long progress, int state, Date date){
+        this.title=title;
+        this.max=max;
+        this.progress=progress;
+        this.state=state;
+        this.date=date;
+    }
+
     public long getProgress() {
         return progress;
     }
@@ -50,6 +58,14 @@ public class Log {
 
     public int getState(){
         return state;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public Date getDate() {
+        return date;
     }
 
     public void incerementProgress(){

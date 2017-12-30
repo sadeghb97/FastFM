@@ -32,6 +32,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -39,7 +40,8 @@ public class MainActivity extends AppCompatActivity {
     final static int DIRECTORIES_ONLY = 1;
     final static int FILES_ONLY = 2;
     final static int BOTH = 0;
-    final static int UNKNOWN = -1000;
+    final static int UNKNOWN_INT = -1000;
+    final static long UNKNOWN_LONG = -1000;
 
     final static int MAX_FILE_SIZE = 1024*500 ;
 
@@ -59,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
+    TextView txvDialog;
     SharedPreferences sharedPreferences;
     SharedPreferences.Editor spEditor;
     LogManager logManager;
@@ -119,10 +122,10 @@ public class MainActivity extends AppCompatActivity {
         sdcardDir=sharedPreferences.getString("sdcdir", null);
 
         int sortBy, sortDir;
-        sortBy=sharedPreferences.getInt("sortby", UNKNOWN);
-        sortDir=sharedPreferences.getInt("sortdir", UNKNOWN);
+        sortBy=sharedPreferences.getInt("sortby", UNKNOWN_INT);
+        sortDir=sharedPreferences.getInt("sortdir", UNKNOWN_INT);
 
-        if(sortBy != UNKNOWN){
+        if(sortBy != UNKNOWN_INT){
             RadioButton rbName = findViewById(R.id.rbSortName);
             RadioButton rbSize = findViewById(R.id.rbSortSize);
             RadioButton rbModified = findViewById(R.id.rbSortModified);
@@ -134,13 +137,31 @@ public class MainActivity extends AppCompatActivity {
                 rbModified.setChecked(true);
         }
 
-        if(sortDir != UNKNOWN){
+        if(sortDir != UNKNOWN_INT){
             RadioButton rbAscending = findViewById(R.id.rbSortAscending);
             RadioButton rbDescending = findViewById(R.id.rbSortDescending);
             if(sortDir == FileOpen.SORT_ASCENDING)
                 rbAscending.setChecked(true);
             else if(sortDir == FileOpen.SORT_DESCENDING)
                 rbDescending.setChecked(true);
+        }
+
+        String constBefore="log";
+        String constAfter="_";
+
+        for(int i=0; true; i++){
+            String start = constBefore+i+constAfter;
+            boolean exist = sharedPreferences.getBoolean(start+"exist", false);
+            if(exist){
+                String title = sharedPreferences.getString(start+"title", null);
+                long max = sharedPreferences.getLong(start+"max", UNKNOWN_LONG);
+                long progress = sharedPreferences.getLong(start+"progress", UNKNOWN_LONG);
+                int state = sharedPreferences.getInt(start+"state", UNKNOWN_INT);
+                long dateTime = sharedPreferences.getLong(start+"date", UNKNOWN_LONG);
+
+                logManager.addLog(new Log(title, max, progress, state, new Date(dateTime)));
+            }
+            else break;
         }
 
         setTxvCurrentDir();
@@ -828,11 +849,27 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         String fileName = txtFileName.getText().toString();
+        spEditor.clear();
 
         spEditor.putString("current-dir", currentDir.getAbsolutePath());
         spEditor.putString("sdcdir", sdcardDir);
         spEditor.putInt("sortby", getSortByMethod());
         spEditor.putInt("sortdir", getSortDir());
+
+        String constBefore="log";
+        String constAfter="_";
+        for(int i=0; logManager.getLength()>i; i++){
+            String start=constBefore+i+constAfter;
+            Log log = logManager.getLog(logManager.getLength()-i-1);
+            spEditor.putBoolean(start+"exist", true);
+            spEditor.putString(start+"title", log.getTitle());
+            spEditor.putLong(start+"max", log.getMax());
+            spEditor.putLong(start+"progress", log.getProgress());
+            spEditor.putInt(start+"state", log.getState());
+            spEditor.putLong(start+"date", log.getDate().getTime());
+
+        }
+
         spEditor.apply();
     }
 
@@ -863,11 +900,17 @@ public class MainActivity extends AppCompatActivity {
         menu.add("Logs").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setTitle("Logs");
+                AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
+                LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                View view = inflater.inflate(R.layout.dialog_textview, null);
 
-                builder.setMessage(getLogsString());
-                builder.show();
+                txvDialog = view.findViewById(R.id.textView);
+                txvDialog.setText(getLogsString());
+                dialog.setView(view);
+                dialog.setTitle("Logs");
+
+                dialog.setPositiveButton("OK", null);
+                dialog.show();
 
                 return false;
             }
@@ -1677,12 +1720,12 @@ public class MainActivity extends AppCompatActivity {
         String runningStr=sb.toString();
 
         String title="";
-        if(runningStr.length()==0 && logManager.length==0)
+        if(runningStr.length()==0 && logManager.getLength()==0)
             title = "No Any Logs!";
 
         else{
             if(runningStr.length()>0) title=runningStr;
-            if(logManager.length>0){
+            if(logManager.getLength()>0){
                 if(runningStr.length()==0) title=logManager.toString();
                 else title=title + "\n\n" + logManager.toString();
             }

@@ -3,10 +3,10 @@ package ir.sbpro.sadegh.myfilesapp;
 import android.content.SharedPreferences;
 
 public class LogManager {
-    Log[] logs;
-    int maxSize;
-    int first;
-    int length;
+    private Log[] logs;
+    private int maxSize;
+    private int first;
+    private int length;
     SharedPreferences sp;
 
     LogManager(int maxSize, SharedPreferences sp){
@@ -48,5 +48,9 @@ public class LogManager {
         }
 
         return sb.toString();
+    }
+
+    public int getLength() {
+        return length;
     }
 }
