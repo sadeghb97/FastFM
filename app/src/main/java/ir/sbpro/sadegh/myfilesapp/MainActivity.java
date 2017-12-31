@@ -18,6 +18,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
@@ -908,6 +909,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        hideKeyboard();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.add("Storage State").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
@@ -1792,12 +1799,18 @@ public class MainActivity extends AppCompatActivity {
 
     public void txtDirFullScroll(){
         if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
-        new Timer().schedule(new TimerTask() {
+        /*new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
                 if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
             }
-        }, 210);
+        }, 210);*/
+        frequencyTimer(new Runnable() {
+            @Override
+            public void run() {
+                scrollView.fullScroll(ScrollView.FOCUS_DOWN);
+            }
+        }, 8, 50);
     }
 
     public String getLogsString(){
@@ -1874,6 +1887,27 @@ public class MainActivity extends AppCompatActivity {
         }
         catch (IOException e){
             return null;
+        }
+    }
+
+    public void hideKeyboard(){
+        final View view = this.getCurrentFocus();
+        if(view!=null){
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+            }, 30);
+        }
+    }
+
+    public void frequencyTimer(final Runnable runnable, int n, long delay){
+        Handler handler = new Handler();
+        for(int i=0; n>i; i++){
+            handler.postDelayed(runnable, (i+1)*delay);
         }
     }
 }
