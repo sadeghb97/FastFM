@@ -945,6 +945,7 @@ public class MainActivity extends AppCompatActivity {
                 builder.setTitle("Logs");
                 builder.setMessage(getLogsString());
                 builder.setPositiveButton("OK", null);
+                builder.setNeutralButton("Clear All", null);
 
                 builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
@@ -955,6 +956,16 @@ public class MainActivity extends AppCompatActivity {
 
                 logsDialog = builder.create();
                 logsDialog.show();
+
+                ((AlertDialog)logsDialog).getButton(AlertDialog.BUTTON_NEUTRAL)
+                        .setOnClickListener(new View.OnClickListener() {
+
+                            @Override
+                            public void onClick(View v) {
+                                logManager.clear();
+                                logsDialog.setMessage(getLogsString());
+                            }
+                        });
 
                 return false;
             }
@@ -1791,8 +1802,10 @@ public class MainActivity extends AppCompatActivity {
 
     public String getLogsString(){
         StringBuilder sb = new StringBuilder();
-        for(int i=0; runningList.size()>i; i++)
+        for(int i=0; runningList.size()>i; i++) {
+            if(sb.length()!=0) sb.append("\n\n");
             sb.append(runningList.get(i));
+        }
         String runningStr=sb.toString();
 
         String title="";

@@ -34,6 +34,11 @@ public class LogManager {
         logs[head]=log;
     }
 
+    public void clear(){
+        first =-1;
+        length=0;
+    }
+
     public Log getLog(int index){
         if(length<=index) throw new RuntimeException();
         return logs[(first+length-1-index)%maxSize];
