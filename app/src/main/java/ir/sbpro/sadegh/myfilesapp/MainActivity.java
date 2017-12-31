@@ -470,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
         btnInsertExternalDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                txtDir.setText(externalDir);
+                txtDir.setText(externalDir+"/");
                 txtDir.setSelection(txtDir.getText().length());
             }
         });
@@ -493,7 +493,7 @@ public class MainActivity extends AppCompatActivity {
                 String txtDirStr= getAbsoluteTextBoxDir();
                 File tempDir=new File(txtDirStr);
                 if(tempDir.exists()){
-                    currentDir=tempDir;
+                    currentDir=getCaseSensitivePath(tempDir);
                     setTxvCurrentDir();
 
                     txtDir.setText("");
@@ -1401,29 +1401,33 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean canShowDir(File dir){
-        if(isExternalReq(txtDir)){
+    private boolean canShowDir(File dir, boolean isSilent){
+        if(dir.getAbsolutePath().indexOf(externalDir)==0){
             if(!haveStoragePermission()){
-                deniedToast.show();
+                if(!isSilent) deniedToast.show();
                 return false;
             }
             else if(!isReadableExtStorageReady()){
-                removedExtToast.show();
+                if(!isSilent) removedExtToast.show();
                 return false;
             }
         }
 
         if(!dir.exists() || !dir.isDirectory()){
-            showLongToast("Directory Not Found");
+            if(!isSilent) showLongToast("Directory Not Found");
             return false;
         }
 
         if(!dir.canRead()){
-            accessDeniedToast.show();
+            if(!isSilent) accessDeniedToast.show();
             return false;
         }
 
         return true;
+    }
+
+    private boolean canShowDir(File dir){
+        return canShowDir(dir, false);
     }
 
     private boolean canChangeDir(File dir){
@@ -1581,43 +1585,56 @@ public class MainActivity extends AppCompatActivity {
         File[] tempOffersList = new File[filesList.length];
         int olIndex=0;
 
+        //boolean unique = true;
+        File helpResultFile = null;
+
         for(File item : filesList){
             boolean correctType;
             if(type == DIRECTORIES_ONLY) correctType=item.isDirectory();
             else if(type == FILES_ONLY) correctType=item.isFile();
             else correctType=true;
 
-            if(item.getName().indexOf(txtBoxLastChildName)==0 && correctType)
+            /*if(unique){
+                if(item.getName().indexOf(txtBoxLastChildName)==0 && correctType){
+                    if(helpResultFile == null) helpResultFile = new File(parentFile, item.getName());
+                    else unique=false;
+                }
+            }*/
+
+            if(item.getName().toLowerCase().indexOf(txtBoxLastChildName.toLowerCase())==0 && correctType)
                 tempOffersList[olIndex++]=item;
         }
 
         File []filesOffersList=new File[olIndex];
-
         for(int i=0; olIndex>i; i++)
             filesOffersList[i] = tempOffersList[i];
-
         tempOffersList = null;
+
+        if(/*(unique && helpResultFile!=null) || */filesOffersList.length==1){
+            /*if(!(unique && helpResultFile!=null))*/ helpResultFile=filesOffersList[0];
+
+            String tempStr;
+            if(txtBoxParentName.isEmpty()){
+                if(position == 0)
+                    tempStr = "/" + helpResultFile.getName();
+                else
+                    tempStr = helpResultFile.getName();
+            }
+            else
+                tempStr = txtBoxParentName+"/"+helpResultFile.getName();
+
+            if(helpResultFile.isDirectory()) tempStr=tempStr+"/";
+
+            textBox.setText(tempStr);
+            textBox.setSelection(textBox.getText().length());
+
+            return;
+        }
 
         if(getSort)
             FileOpen.sortFiles(filesOffersList, sortBy, sortDir);
 
-        if(filesOffersList.length==1){
-            String tempStr;
-            if(txtBoxParentName.isEmpty()){
-                if(position == 0)
-                    tempStr = "/" + filesOffersList[0].getName();
-                else
-                    tempStr = filesOffersList[0].getName();
-            }
-            else
-                tempStr = txtBoxParentName+"/"+filesOffersList[0].getName();
-
-            if(filesOffersList[0].isDirectory()) tempStr=tempStr+"/";
-
-            textBox.setText(tempStr);
-            textBox.setSelection(textBox.getText().length());
-        }
-        else if(filesOffersList.length>1){
+        if(filesOffersList.length>1){
             String like = filesOffersList[0].getName();
             AlertDialog.Builder dialog;
             dialog=new AlertDialog.Builder(context);
@@ -1625,7 +1642,8 @@ public class MainActivity extends AppCompatActivity {
 
             for(int i=0; filesOffersList.length>i; i++){
                 File item = filesOffersList[i];
-                if(!like.equals(txtBoxLastChildName)) like=getMaxLengthCommonString(like, item.getName());
+                if(!like.toLowerCase().equals(txtBoxLastChildName.toLowerCase()))
+                    like=getMaxLengthCommonString(like, item.getName(), false);
 
                 String tempConstStr;
                 if(type == FILES_ONLY || type == DIRECTORIES_ONLY)
@@ -1642,7 +1660,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             String tempRes = textBox.getText().toString();
-            if(!like.equals(txtBoxLastChildName)){
+            if(!like.toLowerCase().equals(txtBoxLastChildName.toLowerCase())){
                 if(txtBoxParentName.isEmpty()){
                     if(position == 0)
                         tempRes = "/" + like;
@@ -1729,7 +1747,7 @@ public class MainActivity extends AppCompatActivity {
         alert.showDialog();
     }
 
-    public static String getMaxLengthCommonString(String strOne, String strTwo){
+    public static String getMaxLengthCommonString(String strOne, String strTwo, boolean caseSensitive){
         String bigStr, like;
         if(strOne.length()>strTwo.length()){
             bigStr=strOne;
@@ -1745,7 +1763,8 @@ public class MainActivity extends AppCompatActivity {
         for (int j = 0; like.length() > j; j++) {
             String smallSub = like.substring(0, like.length() - j);
             String likeSub = bigStr.substring(0, like.length() - j);
-            if(smallSub.equals(likeSub)){
+            if((caseSensitive && smallSub.toLowerCase().equals(likeSub.toLowerCase()))
+                    || (!caseSensitive && smallSub.equals(likeSub))){
                 like=likeSub;
                 findLike=true;
                 break;
@@ -1754,6 +1773,10 @@ public class MainActivity extends AppCompatActivity {
         if(!findLike) like="";
 
         return like;
+    }
+
+    public static String getMaxLengthCommonString(String strOne, String strTwo){
+        return getMaxLengthCommonString(strOne, strTwo, true);
     }
 
     public void txtDirFullScroll(){
@@ -1785,6 +1808,60 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return title;
+    }
+
+    public File caseSensitiveChildPath(File parent, String child){
+        String[] list = parent.list();
+        if(list==null) return null;
+
+        for(String item : list){
+            if(item.equalsIgnoreCase(child))
+                return new File(parent, item);
+        }
+
+        return null;
+    }
+
+    public File getCaseSensitivePath(File dir){
+        try {
+            String fileName;
+            String startWith = "";
+            fileName = dir.getCanonicalPath();
+
+            if (dir.getParentFile() == null) return dir;
+
+            File f = dir;
+            boolean notAllowed = false;
+            while (f.getParentFile() != null){
+                File parent = f.getParentFile();
+                if (!canShowDir(parent, true)) {
+                    startWith = f.getCanonicalPath()+"/";
+                    notAllowed=true;
+                    break;
+                }
+                f=parent;
+            }
+            if(!notAllowed) startWith="/";
+
+            if(fileName.length()<startWith.length() || fileName.equals(startWith)) return dir;
+
+            String remain = fileName.substring(startWith.length());
+
+            String[] chain = remain.split("/");
+            int chainLength = chain.length;
+
+            File swFile = new File(startWith);
+
+            for (int i = 0; chainLength > i; i++) {
+                String childName = chain[i];
+                swFile = caseSensitiveChildPath(swFile, childName);
+            }
+
+            return swFile;
+        }
+        catch (IOException e){
+            return null;
+        }
     }
 }
 
