@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -61,7 +62,9 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
-    TextView txvDialog;
+    TextView txvLogsDialog;
+    Timer timerLogsDialog;
+    Timer timerCurrentDir;
     SharedPreferences sharedPreferences;
     SharedPreferences.Editor spEditor;
     LogManager logManager;
@@ -164,6 +167,37 @@ public class MainActivity extends AppCompatActivity {
             else break;
         }
 
+        txvLogsDialog = null;
+
+        timerCurrentDir = new Timer();
+        timerCurrentDir.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        repairCurrentDir();
+                        setTxvCurrentDir();
+                    }
+                });
+            }
+        }, 0, 1000);
+
+        timerLogsDialog = new Timer();
+        timerLogsDialog.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(txvLogsDialog!=null)
+                            txvLogsDialog.setText(getLogsString());
+                    }
+                });
+            }
+        }, 0, 500);
+
+        repairCurrentDir();
         setTxvCurrentDir();
         setTxvExternalState();
         setTxvStorages();
@@ -904,12 +938,20 @@ public class MainActivity extends AppCompatActivity {
                 LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                 View view = inflater.inflate(R.layout.dialog_textview, null);
 
-                txvDialog = view.findViewById(R.id.textView);
-                txvDialog.setText(getLogsString());
+                txvLogsDialog = view.findViewById(R.id.textView);
+                txvLogsDialog.setText(getLogsString());
                 dialog.setView(view);
                 dialog.setTitle("Logs");
 
                 dialog.setPositiveButton("OK", null);
+
+                dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                        txvLogsDialog=null;
+                    }
+                });
+
                 dialog.show();
 
                 return false;
@@ -1216,7 +1258,8 @@ public class MainActivity extends AppCompatActivity {
             dirStr="..." + (dirStr.substring(dirStrLength-maxDirChars));
 
         print = "Current Dir: " + dirStr;
-        txvCurrentDir.setText(print);
+        if(!txvCurrentDir.getText().toString().equals(print))
+            txvCurrentDir.setText(print);
     }
 
     private void setTxvStorages(){
