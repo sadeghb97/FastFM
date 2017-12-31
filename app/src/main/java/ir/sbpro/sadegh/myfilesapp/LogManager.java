@@ -36,7 +36,7 @@ public class LogManager {
 
     public Log getLog(int index){
         if(length<=index) throw new RuntimeException();
-        return logs[(first+length-1)%maxSize];
+        return logs[(first+length-1-index)%maxSize];
     }
 
     @Override

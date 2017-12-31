@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
-    TextView txvLogsDialog;
+    AlertDialog logsDialog;
     Timer timerLogsDialog;
     Timer timerCurrentDir;
     SharedPreferences sharedPreferences;
@@ -167,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
             else break;
         }
 
-        txvLogsDialog = null;
+        logsDialog = null;
 
         timerCurrentDir = new Timer();
         timerCurrentDir.scheduleAtFixedRate(new TimerTask() {
@@ -190,8 +190,8 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if(txvLogsDialog!=null)
-                            txvLogsDialog.setText(getLogsString());
+                        if(logsDialog!=null)
+                            logsDialog.setMessage(getLogsString());
                     }
                 });
             }
@@ -934,25 +934,27 @@ public class MainActivity extends AppCompatActivity {
         menu.add("Logs").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
+                /*AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
                 LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
                 View view = inflater.inflate(R.layout.dialog_textview, null);
 
                 txvLogsDialog = view.findViewById(R.id.textView);
-                txvLogsDialog.setText(getLogsString());
-                dialog.setView(view);
-                dialog.setTitle("Logs");
+                txvLogsDialog.setText();
+                dialog.setView(view);*/
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle("Logs");
+                builder.setMessage(getLogsString());
+                builder.setPositiveButton("OK", null);
 
-                dialog.setPositiveButton("OK", null);
-
-                dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
                     @Override
                     public void onDismiss(DialogInterface dialog) {
-                        txvLogsDialog=null;
+                        logsDialog=null;
                     }
                 });
 
-                dialog.show();
+                logsDialog = builder.create();
+                logsDialog.show();
 
                 return false;
             }
@@ -1236,7 +1238,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void setTxvCurrentDir(){
         int maxDirChars=70;
-        String dirPath = currentDir.getAbsolutePath();
+
+        String dirPath = null;
+        try {
+            dirPath = currentDir.getCanonicalPath();
+        }
+        catch (IOException e) {
+            throw new RuntimeException();
+        }
+
         StringBuilder dirStrBuilder = new StringBuilder();
         String print;
         String[] list = dirPath.split("/");
