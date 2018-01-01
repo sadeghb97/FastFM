@@ -1,10 +1,12 @@
 package ir.sbpro.sadegh.myfilesapp;
 
 
+import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -37,5 +39,7 @@ public class GetFileNameDialog extends GetStringDialog {
                 MainActivity.helpFileName(getContext(), txtGetInput, currentDir, type, false, -1, -1);
             }
         });
+
+        MainActivity.showKeyboard(context, 30);
     }
 }

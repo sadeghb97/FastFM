@@ -14,6 +14,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.text.method.KeyListener;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -46,14 +49,15 @@ public class MainActivity extends AppCompatActivity {
     final static long UNKNOWN_LONG = -1000;
     final static int PRINT_COPY = 0;
     final static int PRINT_MOVE = 1;
-
     final static int MAX_FILE_SIZE = 1024*500 ;
+
+    boolean isSaved;
 
     ScrollView scrollView;
     EditText txtFileName, txtContent, txtDir;
     TextView txvCurrentDir;
     String strStorages, strExternalState;
-    Button btnWrite, btnRead, btnOpenFile, btnHelpFile,
+    Button btnWrite, btnRead, btnClr, btnOpenFile, btnHelpFile,
             btnDetsFile, btnCopyFile, btnCutFile, btnRemoveFile,
             btnSDCardDir, btnInsertExternalDir,
             btnHelpDir, btnChangeDir, btnShowDir, btnMakeDir,
@@ -72,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
     SharedPreferences.Editor spEditor;
     LogManager logManager;
     ArrayList<Log> runningList;
+    KeyListener keyListener;
     Toast deniedToast;
     Toast removedExtToast;
     Toast dirNotFoundToast;
@@ -81,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        isSaved=true;
 
         internalFilesDir = getFilesDir().getAbsolutePath();
         externalDir = Environment.getExternalStorageDirectory().getAbsolutePath();
@@ -94,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         txtDir=findViewById(R.id.txtDir);
         btnWrite=findViewById(R.id.btnWrite);
         btnRead=findViewById(R.id.btnRead);
+        btnClr = findViewById(R.id.btnClr);
         btnHelpFile=findViewById(R.id.btnHelpFile);
         btnOpenFile=findViewById(R.id.btnOpenFile);
         btnDetsFile=findViewById(R.id.btnDetFile);
@@ -117,6 +125,8 @@ public class MainActivity extends AppCompatActivity {
 
         runningList = new ArrayList<>();
         logManager = new LogManager(20, sharedPreferences);
+
+        keyListener = txtContent.getKeyListener();
 
         deniedToast = Toast.makeText(this, "Permission Denied!", Toast.LENGTH_LONG);
         removedExtToast = Toast.makeText(this, "External Storage Removed!", Toast.LENGTH_LONG);
@@ -208,6 +218,8 @@ public class MainActivity extends AppCompatActivity {
         btnWrite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 String content=txtContent.getText().toString();
                 File file=new File(fileName);
@@ -228,25 +240,77 @@ public class MainActivity extends AppCompatActivity {
                     Log log = new Log(title);
                     runningList.add(log);
 
-                    if(writeFile(file, content.getBytes())) log.finish();
+                    if(writeFile(file, content.getBytes())){
+                        log.finish();
+                        isSaved=true;
+                    }
                     else log.makeUndone();
+
                     runningList.remove(log);
                     logManager.addLog(log);
                 }
-
             }
         });
 
         btnRead.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 File file = new File(fileName);
 
                 if(isHavePermissionToOpenTextBoxFileName()) {
                     String content = readTxtFile(file);
-                    if (content != null) txtContent.setText(content);
+                    if (content != null){
+                        txtContent.setText(content);
+                        txtContent.requestFocus();
+                        txtContent.setSelection(0);
+                        isSaved=true;
+                    }
                 }
+            }
+        });
+
+        txtContent.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                isSaved = false;
+            }
+        });
+
+        btnClr.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isSaved) clearContent();
+                else{
+                    new SureDialog(MainActivity.this, "The File is not Saved!\nAre you sure?",
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    clearContent();
+                                }
+                            } ,null).show();
+                }
+
+            }
+        });
+
+        btnClr.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                txtContent.setEnabled(!txtContent.isEnabled());
+                return true;
             }
         });
 
@@ -276,6 +340,8 @@ public class MainActivity extends AppCompatActivity {
         btnDetsFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 File file = new File(fileName);
 
@@ -288,6 +354,8 @@ public class MainActivity extends AppCompatActivity {
         btnCopyFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 final File file = new File(fileName);
 
@@ -299,6 +367,8 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
                             final File dest = new File(destFileName);
@@ -345,7 +415,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
-                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+                        }
+                    });
+
                     reqDestDialog.createDialog();
                     reqDestDialog.showDialog();
                 }
@@ -355,6 +431,8 @@ public class MainActivity extends AppCompatActivity {
         btnCutFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 final File file = new File(fileName);
 
@@ -366,6 +444,8 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
                             final File dest = new File(destFileName);
@@ -407,7 +487,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
-                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+                        }
+                    });
+
                     reqDestDialog.createDialog();
                     reqDestDialog.showDialog();
                 }
@@ -417,6 +503,8 @@ public class MainActivity extends AppCompatActivity {
         btnRemoveFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 String fileName=getAbsoluteTextBoxFileName();
                 final File file=new File(fileName);
 
@@ -511,6 +599,8 @@ public class MainActivity extends AppCompatActivity {
         btnMakeDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
+
                 if(txtDir.getText().toString().isEmpty()){
                     txtDir.requestFocus();
                     return;
@@ -559,6 +649,7 @@ public class MainActivity extends AppCompatActivity {
         btnShowDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
                 File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -577,6 +668,7 @@ public class MainActivity extends AppCompatActivity {
         btnDetsDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
                 File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -595,6 +687,7 @@ public class MainActivity extends AppCompatActivity {
         btnCopyDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
                 final File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -619,20 +712,20 @@ public class MainActivity extends AppCompatActivity {
                             final FileDetails fdDir = new FileDetails(dir);
 
                             if(canMakeDir(dest) && !isConflictCopy(dir, dest, PRINT_COPY)){
-                                final long freeSpace;
-                                if(dest.exists()) freeSpace=dest.getFreeSpace();
-                                else freeSpace = dest.getParentFile().getFreeSpace();
-
                                 String title = "Copying Directory:\nFrom: " + dir.getAbsolutePath() + "\n" +
                                         "To: " + dest.getAbsolutePath();
                                 final Log log = new Log(title);
                                 runningList.add(log);
-
                                 final AsyncTask asyncTask = new AsyncTask() {
                                     boolean doing = false;
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
+                                        long freeSpace;
+                                        if(dest.exists()) freeSpace=dest.getFreeSpace();
+                                        else freeSpace = dest.getParentFile().getFreeSpace();
                                         fdDir.makeDetails();
+                                        hideKeyboard(60);
+
                                         if(fdDir.getSize()>freeSpace){
                                             showLongToast("No enough space!");
                                             log.makeUndone();
@@ -677,7 +770,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
-                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+                        }
+                    });
+
                     reqDestDialog.createDialog();
                     reqDestDialog.showDialog();
                 }
@@ -687,6 +786,7 @@ public class MainActivity extends AppCompatActivity {
         btnCutDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
                 final File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -705,6 +805,8 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
                             final File dest = new File(destFileName);
@@ -760,7 +862,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
-                    reqDestDialog.setNegativeButton("Cancel", null);
+                    reqDestDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+                        }
+                    });
+
                     reqDestDialog.createDialog();
                     reqDestDialog.showDialog();
                 }
@@ -770,6 +878,7 @@ public class MainActivity extends AppCompatActivity {
         btnRemoveDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                hideKeyboard();
                 final File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -980,6 +1089,18 @@ public class MainActivity extends AppCompatActivity {
         });
 
         return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onMenuOpened(int featureId, Menu menu) {
+        hideKeyboard();
+        return super.onMenuOpened(featureId, menu);
+    }
+
+    private void clearContent(){
+        txtFileName.setText("");
+        txtContent.setText("");
+        isSaved=true;
     }
 
     private boolean writeFile(File file, byte[] content){
@@ -1486,22 +1607,18 @@ public class MainActivity extends AppCompatActivity {
         else message="Cannot move a Dir into itself!";
         Toast toast =
                 Toast.makeText(this, message, Toast.LENGTH_LONG);
-        
+
         src=getCaseSensitivePath(src, false);
         dest=getCaseSensitivePath(dest, false);
 
-        if(dest==null || src==null){
-            if(src==null) showLongToast(String.valueOf("src: null"));
-            if(dest==null) showLongToast(String.valueOf("dest: null"));
-            return true;
-        }
         if(src.equals(dest)){
             toast.show();
             return true;
         }
 
         File p = dest;
-        while((p=dest.getParentFile()) != null) {
+        while(p.getParentFile() != null) {
+            p = p.getParentFile();
             if (p.equals(src)) {
                 toast.show();
                 return true;
@@ -1841,12 +1958,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void txtDirFullScroll(){
         if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
-        /*new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                if(txtDir.hasFocus()) scrollView.fullScroll(ScrollView.FOCUS_DOWN);
-            }
-        }, 210);*/
         frequencyTimer(new Runnable() {
             @Override
             public void run() {
@@ -1939,18 +2050,44 @@ public class MainActivity extends AppCompatActivity {
         return getCaseSensitivePath(dir, true);
     }
 
-    public void hideKeyboard(){
-        final View view = this.getCurrentFocus();
-        if(view!=null){
-            Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    public void hideKeyboard(final int delay){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final View view = MainActivity.this.getCurrentFocus();
+                if(view!=null){
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            InputMethodManager imm =
+                                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                        }
+                    }, delay);
                 }
-            }, 30);
-        }
+            }
+        });
+    }
+
+    public void hideKeyboard(){
+        hideKeyboard(30);
+    }
+
+    public static void showKeyboard(final Context context, int delay){
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                InputMethodManager imm =
+                        (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.toggleSoftInput(InputMethodManager.SHOW_FORCED,0);
+            }
+        }, delay);
+    }
+
+    public void showKeyboard(){
+        showKeyboard(this, 30);
     }
 
     public void frequencyTimer(final Runnable runnable, int n, long delay){
@@ -1960,12 +2097,3 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
-
-
-
-
-
-
-
-
-

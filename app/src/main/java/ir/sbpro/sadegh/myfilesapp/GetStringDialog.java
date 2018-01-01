@@ -7,16 +7,19 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
 public class GetStringDialog extends AlertDialog.Builder {
     EditText txtGetInput;
     AlertDialog dialog;
+    Context context;
 
     public GetStringDialog(Context context, int resId, int txtId, String defStr, String title
             , String message) {
-
         super(context);
+
+        this.context=context;
         setTitle(title);
         setMessage(message);
 
