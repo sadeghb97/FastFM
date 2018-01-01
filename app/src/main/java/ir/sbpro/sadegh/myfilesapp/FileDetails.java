@@ -3,7 +3,6 @@ package ir.sbpro.sadegh.myfilesapp;
 import android.content.Context;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.File;
 import java.util.Date;

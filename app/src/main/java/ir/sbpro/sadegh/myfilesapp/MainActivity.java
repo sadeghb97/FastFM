@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     LogManager logManager;
     ArrayList<Log> runningList;
     KeyListener keyListener;
+    Toast GENERAL_TOAST;
     Toast deniedToast;
     Toast removedExtToast;
     Toast dirNotFoundToast;
@@ -128,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
 
         keyListener = txtContent.getKeyListener();
 
+        GENERAL_TOAST = Toast.makeText(this, "", Toast.LENGTH_LONG);
         deniedToast = Toast.makeText(this, "Permission Denied!", Toast.LENGTH_LONG);
         removedExtToast = Toast.makeText(this, "External Storage Removed!", Toast.LENGTH_LONG);
         dirNotFoundToast = Toast.makeText(this, "Directory Not Found!", Toast.LENGTH_LONG);
@@ -324,7 +326,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         FileOpen.openFile(MainActivity.this, file);
                     } catch (IOException e) {
-                        Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+                        showLongToast(e.getMessage());
                     }
                 }
             }
@@ -623,7 +625,7 @@ public class MainActivity extends AppCompatActivity {
                     txtDir.requestFocus();
                 }
                 else{
-                    Toast.makeText(MainActivity.this, "Directory Not Found!", Toast.LENGTH_SHORT).show();
+                    showLongToast("Directory Not Found!");
                 }
             }
         });
@@ -653,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                 File tempDir = new File(txtDirStr);
 
                 if (tempDir.exists()) {
-                    Toast.makeText(MainActivity.this, "Directory Exists Now!", Toast.LENGTH_SHORT).show();
+                    showShortToast("Directory Exists Now!");
                 }
                 else {
                     String title = "Make Directory:\nFile Name: " + tempDir.getAbsolutePath();
@@ -661,7 +663,7 @@ public class MainActivity extends AppCompatActivity {
                     runningList.add(log);
 
                     if(tempDir.mkdirs()){
-                        Toast.makeText(MainActivity.this, "Directory Created!", Toast.LENGTH_LONG).show();
+                        showLongToast("Directory Created!");
                         log.finish();
                     }
                     else {
@@ -1037,7 +1039,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        String fileName = txtFileName.getText().toString();
+
+        hideAllToasts();
+
         spEditor.clear();
 
         spEditor.putString("current-dir", currentDir.getAbsolutePath());
@@ -1157,7 +1161,7 @@ public class MainActivity extends AppCompatActivity {
             FileOutputStream fos=new FileOutputStream(file);
             fos.write(content);
             fos.close();
-            Toast.makeText(this, "File Written!", Toast.LENGTH_LONG).show();
+            showLongToast("File Written!");
             return true;
         }
         catch (IOException e) {
@@ -1166,14 +1170,14 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
 
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+            showLongToast(e.getMessage());
             return false;
         }
     }
 
     private String readTxtFile(File file){
         if(!file.isFile()){
-            Toast.makeText(this, "File Not Found!", Toast.LENGTH_LONG).show();
+            showLongToast("File Not Found!");
             return null;
         }
 
@@ -1649,14 +1653,12 @@ public class MainActivity extends AppCompatActivity {
         String message;
         if(print == PRINT_COPY) message="Cannot copy a Dir into itself!";
         else message="Cannot move a Dir into itself!";
-        Toast toast =
-                Toast.makeText(this, message, Toast.LENGTH_LONG);
 
         src=getCaseSensitivePath(src, false);
         dest=getCaseSensitivePath(dest, false);
 
         if(src.equals(dest)){
-            toast.show();
+            showLongToast(message);
             return true;
         }
 
@@ -1664,7 +1666,7 @@ public class MainActivity extends AppCompatActivity {
         while(p.getParentFile() != null) {
             p = p.getParentFile();
             if (p.equals(src)) {
-                toast.show();
+                showLongToast(message);
                 return true;
             }
         }
@@ -1695,7 +1697,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(!file.isFile()){
-            Toast.makeText(this, "File Not Found!", Toast.LENGTH_LONG).show();
+            showLongToast("File Not Found!");
             return false;
         }
 
@@ -1718,7 +1720,7 @@ public class MainActivity extends AppCompatActivity {
         File parent=file.getParentFile();
 
         if(parent!=null && !parent.exists()){
-            Toast.makeText(MainActivity.this, "Parent Directory Not Found!", Toast.LENGTH_LONG).show();
+            showLongToast("Parent Directory Not Found!");
             return false;
         }
 
@@ -1757,7 +1759,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showLongToast(String message){
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        GENERAL_TOAST.setText(message);
+        GENERAL_TOAST.setDuration(Toast.LENGTH_LONG);
+        GENERAL_TOAST.show();
+    }
+
+    private void showShortToast(String message){
+        GENERAL_TOAST.setText(message);
+        GENERAL_TOAST.setDuration(Toast.LENGTH_SHORT);
+        GENERAL_TOAST.show();
     }
 
     public static void helpFileName(Context context, final EditText textBox, File curDir,
@@ -2139,5 +2149,13 @@ public class MainActivity extends AppCompatActivity {
         for(int i=0; n>i; i++){
             handler.postDelayed(runnable, (i+1)*delay);
         }
+    }
+
+    public void hideAllToasts(){
+        GENERAL_TOAST.cancel();
+        deniedToast.cancel();
+        removedExtToast.cancel();
+        dirNotFoundToast.cancel();
+        accessDeniedToast.cancel();
     }
 }
