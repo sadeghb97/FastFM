@@ -354,8 +354,6 @@ public class MainActivity extends AppCompatActivity {
         btnCopyFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideKeyboard();
-
                 String fileName=getAbsoluteTextBoxFileName();
                 final File file = new File(fileName);
 
@@ -384,7 +382,7 @@ public class MainActivity extends AppCompatActivity {
                                 final Log log = new Log(title);
                                 runningList.add(log);
 
-                                AsyncTask asyncTask = new AsyncTask() {
+                                final AsyncTask asyncTask = new AsyncTask() {
                                     boolean doing = false;
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
@@ -410,7 +408,25 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 };
 
-                                asyncTask.execute();
+                                if (dest.exists()) {
+                                    Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                                    "Do you want to owerwrite?", new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    asyncTask.execute();
+                                                }
+                                            }, null).show();
+                                        }
+                                    },30);
+                                }
+
+                                else {
+                                    asyncTask.execute();
+                                }
                             }
                         }
                     });
@@ -431,8 +447,6 @@ public class MainActivity extends AppCompatActivity {
         btnCutFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideKeyboard();
-
                 String fileName=getAbsoluteTextBoxFileName();
                 final File file = new File(fileName);
 
@@ -456,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
                                 final Log log = new Log(title);
                                 runningList.add(log);
 
-                                AsyncTask asyncTask = new AsyncTask() {
+                                final AsyncTask asyncTask = new AsyncTask() {
                                     boolean doing = false;
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
@@ -482,7 +496,25 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 };
 
-                                asyncTask.execute();
+                                if (dest.exists()) {
+                                    Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                                    "Do you want to owerwrite?", new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    asyncTask.execute();
+                                                }
+                                            }, null).show();
+                                        }
+                                    },30);
+                                }
+
+                                else {
+                                    asyncTask.execute();
+                                }
                             }
                         }
                     });
@@ -687,7 +719,6 @@ public class MainActivity extends AppCompatActivity {
         btnCopyDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideKeyboard();
                 final File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -706,6 +737,8 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            hideKeyboard(60);
+
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
                             final File dest = new File(destFileName);
@@ -753,14 +786,19 @@ public class MainActivity extends AppCompatActivity {
                                 };
 
                                 if (dest.exists()) {
-                                    showLongToast(dest.getAbsolutePath());
-                                    new SureDialog(MainActivity.this, "The same filename already exists, " +
-                                            "Do you want to owerwrite?", new Runnable() {
+                                    Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
                                         @Override
                                         public void run() {
-                                            asyncTask.execute();
+                                            new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                                    "Do you want to owerwrite?", new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    asyncTask.execute();
+                                                }
+                                            }, null).show();
                                         }
-                                    }, null).show();
+                                    },30);
                                 }
 
                                 else {
@@ -786,7 +824,6 @@ public class MainActivity extends AppCompatActivity {
         btnCutDir.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                hideKeyboard();
                 final File dir;
 
                 if(txtDir.getText().toString().isEmpty()){
@@ -847,15 +884,22 @@ public class MainActivity extends AppCompatActivity {
                                 };
 
                                 if (dest.exists()) {
-                                    showLongToast(dest.getAbsolutePath());
-                                    new SureDialog(MainActivity.this, "The same filename already exists, " +
-                                            "Do you want to owerwrite?", new Runnable() {
+                                    Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
                                         @Override
                                         public void run() {
-                                            asyncTask.execute();
+                                            new SureDialog(MainActivity.this, "The same filename already exists, " +
+                                                    "Do you want to owerwrite?", new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    asyncTask.execute();
+                                                }
+                                            }, null).show();
                                         }
-                                    }, null).show();
-                                } else {
+                                    },30);
+                                }
+
+                                else {
                                     asyncTask.execute();
                                 }
                             }
