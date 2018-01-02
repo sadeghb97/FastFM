@@ -24,6 +24,7 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
@@ -69,7 +70,11 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
+    View progressView;
     AlertDialog logsDialog;
+    AlertDialog progressDialog;
+    ProgressAdapter adpProgress;
+    ListView lsvProgress;
     Timer timerLogsDialog;
     Timer timerCurrentDir;
     SharedPreferences sharedPreferences;
@@ -198,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }, 0, 1000);
 
-        timerLogsDialog = new Timer();
+        /*timerLogsDialog = new Timer();
         timerLogsDialog.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -210,7 +215,21 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
-        }, 0, 500);
+        }, 0, 500);*/
+
+        LayoutInflater inflater =
+                (LayoutInflater) MainActivity.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        progressView = inflater.inflate(R.layout.layout_list_progress, null);
+
+        lsvProgress = progressView.findViewById(R.id.listView);
+        adpProgress = new ProgressAdapter(MainActivity.this, runningList);
+        lsvProgress.setAdapter(adpProgress);
+        lsvProgress.setEmptyView(progressView.findViewById(R.id.empty));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setPositiveButton("OK", null);
+        progressDialog = builder.create();
+        progressDialog.setView(progressView);
 
         repairCurrentDir();
         setTxvCurrentDir();
@@ -239,16 +258,37 @@ public class MainActivity extends AppCompatActivity {
 
                 if(isHavePermissionToWriteTextBoxFileName()){
                     String title = "Writing File: \nFile Name: " + file.getAbsolutePath();
-                    Log log = new Log(title);
+                    final Log log = new Log(title);
                     runningList.add(log);
 
                     if(writeFile(file, content.getBytes())){
-                        log.finish();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                log.finish();
+                                notifyLogsChanged();
+                            }
+                        });
                         isSaved=true;
                     }
-                    else log.makeUndone();
+                    else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                log.makeUndone();
+                                notifyLogsChanged();
+                            }
+                        });
+                    }
 
-                    runningList.remove(log);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            runningList.remove(log);
+                            notifyLogsChanged();
+                        }
+                    });
+
                     logManager.addLog(log);
                 }
             }
@@ -367,7 +407,7 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            hideKeyboard(60);
+                            hideKeyboard(120);
 
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
@@ -390,14 +430,33 @@ public class MainActivity extends AppCompatActivity {
                                     protected Object doInBackground(Object[] objects) {
                                         if (copyFile(file, dest, log, false)) {
                                             doing =true;
-                                            log.finish();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.finish();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
                                         else {
                                             doing =false;
-                                            log.makeUndone();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.makeUndone();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
 
-                                        runningList.remove(log);
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.makeUndone();
+                                                runningList.remove(log);
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                         logManager.addLog(log);
 
                                         return null;
@@ -421,7 +480,20 @@ public class MainActivity extends AppCompatActivity {
                                                 public void run() {
                                                     asyncTask.execute();
                                                 }
-                                            }, null).show();
+                                            }, new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            log.makeUndone();
+                                                            runningList.remove(log);
+                                                            notifyLogsChanged();
+                                                        }
+                                                    });
+                                                    logManager.addLog(log);
+                                                }
+                                            }).show();
                                         }
                                     },30);
                                 }
@@ -460,7 +532,7 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            hideKeyboard(60);
+                            hideKeyboard(120);
 
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
@@ -478,14 +550,33 @@ public class MainActivity extends AppCompatActivity {
                                     protected Object doInBackground(Object[] objects) {
                                         if (cutFile(file, dest, log, false)){
                                             doing=true;
-                                            log.finish();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.finish();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
                                         else{
                                             doing=false;
-                                            log.makeUndone();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.makeUndone();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
 
-                                        runningList.remove(log);
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.makeUndone();
+                                                runningList.remove(log);
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                         logManager.addLog(log);
 
                                         return null;
@@ -509,7 +600,20 @@ public class MainActivity extends AppCompatActivity {
                                                 public void run() {
                                                     asyncTask.execute();
                                                 }
-                                            }, null).show();
+                                            }, new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            log.makeUndone();
+                                                            runningList.remove(log);
+                                                            notifyLogsChanged();
+                                                        }
+                                                    });
+                                                    logManager.addLog(log);
+                                                }
+                                            }).show();
                                         }
                                     },30);
                                 }
@@ -554,14 +658,33 @@ public class MainActivity extends AppCompatActivity {
                                 showLongToast("File Deleted!");
                                 txtFileName.setText("");
                                 txtFileName.requestFocus();
-                                log.finish();
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        log.finish();
+                                        notifyLogsChanged();
+                                    }
+                                });
                             }
                             else{
                                 showLongToast("The file can not be deleted");
-                                log.makeUndone();
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        log.makeUndone();
+                                        notifyLogsChanged();
+                                    }
+                                });
                             }
 
-                            runningList.remove(log);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    log.makeUndone();
+                                    runningList.remove(log);
+                                    notifyLogsChanged();
+                                }
+                            });
                             logManager.addLog(log);
                         }
                     }, null).show();
@@ -664,14 +787,33 @@ public class MainActivity extends AppCompatActivity {
 
                     if(tempDir.mkdirs()){
                         showLongToast("Directory Created!");
-                        log.finish();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                log.finish();
+                                notifyLogsChanged();
+                            }
+                        });
                     }
                     else {
                         accessDeniedToast.show();
-                        log.makeUndone();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                log.makeUndone();
+                                notifyLogsChanged();
+                            }
+                        });
                     }
 
-                    runningList.remove(log);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            log.makeUndone();
+                            runningList.remove(log);
+                            notifyLogsChanged();
+                        }
+                    });
                     logManager.addLog(log);
                 }
 
@@ -739,7 +881,7 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            hideKeyboard(60);
+                            hideKeyboard(120);
 
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
@@ -763,18 +905,43 @@ public class MainActivity extends AppCompatActivity {
 
                                         if(fdDir.getSize()>freeSpace){
                                             showLongToast("No enough space!");
-                                            log.makeUndone();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.makeUndone();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
                                         else if (recCopyDir(dir, dest, log, false)){
                                             doing=true;
-                                            log.finish();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.finish();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
                                         else{
                                             doing=false;
-                                            log.makeUndone();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.makeUndone();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
 
-                                        runningList.remove(log);
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.makeUndone();
+                                                runningList.remove(log);
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                         logManager.addLog(log);
 
                                         return null;
@@ -798,9 +965,22 @@ public class MainActivity extends AppCompatActivity {
                                                 public void run() {
                                                     asyncTask.execute();
                                                 }
-                                            }, null).show();
+                                            }, new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            log.makeUndone();
+                                                            runningList.remove(log);
+                                                            notifyLogsChanged();
+                                                        }
+                                                    });
+                                                    logManager.addLog(log);
+                                                }
+                                            }).show();
                                         }
-                                    },30);
+                                    },1);
                                 }
 
                                 else {
@@ -844,7 +1024,7 @@ public class MainActivity extends AppCompatActivity {
                     reqDestDialog.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            hideKeyboard(60);
+                            hideKeyboard(120);
 
                             String destFileName = recGetAbsTextBoxFileName(currentDir,
                                     reqDestDialog.getTxtGetInput().getText().toString());
@@ -863,13 +1043,32 @@ public class MainActivity extends AppCompatActivity {
                                     protected Object doInBackground(Object[] objects) {
                                         if (recCutDir(dir, dest, log, false)) {
                                             doing = true;
-                                            log.finish();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.finish();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         } else {
                                             doing = false;
-                                            log.makeUndone();
+                                            runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    log.makeUndone();
+                                                    notifyLogsChanged();
+                                                }
+                                            });
                                         }
 
-                                        runningList.remove(log);
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.makeUndone();
+                                                runningList.remove(log);
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                         logManager.addLog(log);
 
                                         return null;
@@ -896,7 +1095,20 @@ public class MainActivity extends AppCompatActivity {
                                                 public void run() {
                                                     asyncTask.execute();
                                                 }
-                                            }, null).show();
+                                            }, new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    runOnUiThread(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            log.makeUndone();
+                                                            runningList.remove(log);
+                                                            notifyLogsChanged();
+                                                        }
+                                                    });
+                                                    logManager.addLog(log);
+                                                }
+                                            }).show();
                                         }
                                     },30);
                                 }
@@ -971,14 +1183,33 @@ public class MainActivity extends AppCompatActivity {
                                 protected Object doInBackground(Object[] objects) {
                                     if (recRemoveDir(dir, log)){
                                         doing=true;
-                                        log.finish();
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.finish();
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                     }
                                     else{
                                         doing=false;
-                                        log.makeUndone();
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                log.makeUndone();
+                                                notifyLogsChanged();
+                                            }
+                                        });
                                     }
 
-                                    runningList.remove(log);
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            log.makeUndone();
+                                            runningList.remove(log);
+                                            notifyLogsChanged();
+                                        }
+                                    });
                                     logManager.addLog(log);
 
                                     return null;
@@ -988,8 +1219,8 @@ public class MainActivity extends AppCompatActivity {
                                 protected void onPostExecute(Object o) {
                                     if(doing){
                                         showLongToast("Directory Deleted!");
-                                        txtFileName.setText("");
-                                        txtFileName.requestFocus();
+                                        txtDir.setText("");
+                                        txtDir.requestFocus();
 
                                         repairCurrentDir();
                                         setTxvCurrentDir();
@@ -1136,6 +1367,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        menu.add("Running Proccesses").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                progressDialog.show();
+                return false;
+            }
+        });
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -1249,7 +1488,16 @@ public class MainActivity extends AppCompatActivity {
             int len;
             while ((len = in.read(buffer)) != -1) {
                 out.write(buffer, 0, len);
-                if(log!=null) log.incerementProgress();
+                if(log!=null){
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            log.incerementProgress();
+                            notifyLogsChanged();
+                        }
+                    });
+                }
             }
 
             in.close();
@@ -1259,13 +1507,30 @@ public class MainActivity extends AppCompatActivity {
             out.close();
             out = null;
 
-            if(log!=null && !noChangeProgress) log.finish();
+            if(log!=null && !noChangeProgress){
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        log.finish();
+                        notifyLogsChanged();
+                    }
+                });
+
+            }
             return true;
 
         }
         catch (IOException e) {
             showLongToast(e.getMessage());
-            if(log!=null) log.makeUndone();
+            if(log!=null){
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        log.makeUndone();
+                        notifyLogsChanged();
+                    }
+                });
+            }
             return false;
         }
     }
@@ -1406,10 +1671,13 @@ public class MainActivity extends AppCompatActivity {
         return recCutDir(src, dest, null, false);
     }
 
-    public static boolean recRemoveDir(File dir, Log log){
+    public boolean recRemoveDir(File dir, Log log){
         if(dir.isFile()){
             if(dir.delete()){
-                if(log!=null) log.incerementProgress();
+                if(log!=null){
+                    log.incerementProgress();
+                    notifyLogsChanged();
+                }
                 return true;
             }
             return false;
@@ -1424,13 +1692,16 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(dir.delete()){
-            if(log!=null) log.incerementProgress();
+            if(log!=null){
+                log.incerementProgress();
+                notifyLogsChanged();
+            }
             return true;
         }
         return false;
     }
 
-    public static boolean recRemoveDir(File dir){
+    public boolean recRemoveDir(File dir){
         return recRemoveDir(dir, null);
     }
 
@@ -2021,7 +2292,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public String getLogsString(){
-        StringBuilder sb = new StringBuilder();
+        /*StringBuilder sb = new StringBuilder();
         for(int i=0; runningList.size()>i; i++) {
             if(sb.length()!=0) sb.append("\n\n");
             sb.append(runningList.get(i));
@@ -2040,6 +2311,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        return title;*/
+        String title = logManager.toString();
+        if(title.equals("")) title="No Any Logs!";
         return title;
     }
 
@@ -2157,5 +2431,14 @@ public class MainActivity extends AppCompatActivity {
         removedExtToast.cancel();
         dirNotFoundToast.cancel();
         accessDeniedToast.cancel();
+    }
+
+    public void notifyLogsChanged(){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                adpProgress.notifyDataSetChanged();
+            }
+        });
     }
 }

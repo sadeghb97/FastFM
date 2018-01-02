@@ -94,12 +94,14 @@ public class Log {
         if(state==STATE_SUCCESSFUL) sb.append("Finished");
         else if(state==STATE_UNDONE) sb.append("Undone");
         else if(state==STATE_INCOMPLETED) sb.append("Incompleted");
-        else{
-            long tempProgress = progress*100;
-            double progressPercent = tempProgress/max;
-            sb.append(String.valueOf((int) progressPercent)+"%");
-        }
+        else sb.append(getProgressPercent());
 
         return sb.toString();
+    }
+
+    public String getProgressPercent(){
+        long tempProgress = progress*100;
+        double progressPercent = tempProgress/max;
+        return String.valueOf((int) progressPercent)+"%";
     }
 }
