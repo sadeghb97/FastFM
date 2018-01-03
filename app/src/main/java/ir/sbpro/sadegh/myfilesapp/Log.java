@@ -2,41 +2,50 @@ package ir.sbpro.sadegh.myfilesapp;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 
 public class Log {
+    RunningActivity rActivity;
     String title;
     long max;
     long progress;
     int state;
     Date date;
+    String cause;
 
     final int STATE_RUN = 0;
     final int STATE_SUCCESSFUL = 1;
     final int STATE_UNDONE = 2;
     final int STATE_INCOMPLETED = 3;
 
-    Log(String title){
-        this.title=title;
-        state=STATE_RUN;
-        date= Calendar.getInstance().getTime();
-        max=1;
-        progress=0;
+    Log(RunningActivity rActivity, String title) {
+        this.rActivity = rActivity;
+        this.title = title;
+        state = STATE_RUN;
+        date = Calendar.getInstance().getTime();
+        max = 1;
+        progress = 0;
+        cause="";
     }
 
-    Log(String title, long max){
+    Log(RunningActivity rActivity, String title, long max){
+        this.rActivity=rActivity;
         this.title=title;
         state=STATE_RUN;
         date= Calendar.getInstance().getTime();
         this.max=max;
         this.progress=0;
+        cause="";
     }
 
-    Log(String title, long max, long progress, int state, Date date){
+    Log(String title, long max, long progress, int state, Date date, String cause){
         this.title=title;
         this.max=max;
         this.progress=progress;
         this.state=state;
         this.date=date;
+        this.cause=cause;
     }
 
     public long getProgress() {
@@ -68,23 +77,12 @@ public class Log {
         return date;
     }
 
-    public void incerementProgress(){
-        if((progress+1) <= max){
-            progress++;
-            if(progress==max) finish();
-        }
+    public void setCause(String cause) {
+        this.cause = cause;
     }
 
-    public void finish(){
-        state=STATE_SUCCESSFUL;
-    }
-
-    public void makeUndone(){
-        state=STATE_UNDONE;
-    }
-
-    public void makeIncompleted(){
-        state=STATE_INCOMPLETED;
+    public String getCause() {
+        return cause;
     }
 
     @Override
@@ -103,5 +101,64 @@ public class Log {
         long tempProgress = progress*100;
         double progressPercent = tempProgress/max;
         return String.valueOf((int) progressPercent)+"%";
+    }
+
+    public void waitAndShowDialog(){
+        rActivity.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                android.os.Handler handler = new android.os.Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (state == STATE_RUN && !Log.this.rActivity.getProgressDialog().isShowing())
+                            Log.this.rActivity.getProgressDialog().show();
+                    }
+                }, 200);
+            }
+        });
+    }
+
+    public void incerementProgress(){
+        if((progress+1) <= max){
+            rActivity.getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    progress++;
+                    if(progress==max) finish();
+                    rActivity.getAdapter().notifyDataSetChanged();
+                }
+            });
+        }
+    }
+
+    public void finish(){
+        rActivity.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                state=STATE_SUCCESSFUL;
+                rActivity.getAdapter().notifyDataSetChanged();
+            }
+        });
+    }
+
+    public void makeUndone(){
+        rActivity.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                state=STATE_UNDONE;
+                rActivity.getAdapter().notifyDataSetChanged();
+            }
+        });
+    }
+
+    public void makeIncompleted(){
+        rActivity.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                state=STATE_INCOMPLETED;
+                rActivity.getAdapter().notifyDataSetChanged();
+            }
+        });
     }
 }

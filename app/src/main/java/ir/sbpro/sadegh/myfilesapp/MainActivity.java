@@ -70,17 +70,17 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
-    View progressView;
+    //View progressView;
     AlertDialog logsDialog;
     AlertDialog progressDialog;
     ProgressAdapter adpProgress;
-    ListView lsvProgress;
-    Timer timerLogsDialog;
+    //ListView lsvProgress;
+    RunningActivity rActivity;
     Timer timerCurrentDir;
     SharedPreferences sharedPreferences;
     SharedPreferences.Editor spEditor;
     LogManager logManager;
-    ArrayList<Log> runningList;
+    RunningList runningList;
     KeyListener keyListener;
     Toast GENERAL_TOAST;
     Toast deniedToast;
@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
         sharedPreferences=getSharedPreferences("prefs", MODE_PRIVATE);
         spEditor=sharedPreferences.edit();
 
-        runningList = new ArrayList<>();
+        runningList = new RunningList();
         logManager = new LogManager(20, sharedPreferences);
 
         keyListener = txtContent.getKeyListener();
@@ -181,8 +181,9 @@ public class MainActivity extends AppCompatActivity {
                 long progress = sharedPreferences.getLong(start+"progress", UNKNOWN_LONG);
                 int state = sharedPreferences.getInt(start+"state", UNKNOWN_INT);
                 long dateTime = sharedPreferences.getLong(start+"date", UNKNOWN_LONG);
+                String cause = sharedPreferences.getString(start+"cause", null);
 
-                logManager.addLog(new Log(title, max, progress, state, new Date(dateTime)));
+                logManager.addLog(new Log(title, max, progress, state, new Date(dateTime), cause));
             }
             else break;
         }
@@ -203,33 +204,22 @@ public class MainActivity extends AppCompatActivity {
             }
         }, 0, 1000);
 
-        /*timerLogsDialog = new Timer();
-        timerLogsDialog.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if(logsDialog!=null)
-                            logsDialog.setMessage(getLogsString());
-                    }
-                });
-            }
-        }, 0, 500);*/
-
         LayoutInflater inflater =
                 (LayoutInflater) MainActivity.this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        progressView = inflater.inflate(R.layout.layout_list_progress, null);
+        View progressView = inflater.inflate(R.layout.layout_list_progress, null);
 
-        lsvProgress = progressView.findViewById(R.id.listView);
+        ListView lsvProgress = progressView.findViewById(R.id.listView);
         adpProgress = new ProgressAdapter(MainActivity.this, runningList);
         lsvProgress.setAdapter(adpProgress);
         lsvProgress.setEmptyView(progressView.findViewById(R.id.empty));
 
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setPositiveButton("OK", null);
+        builder.setPositiveButton("Hide", null);
         progressDialog = builder.create();
         progressDialog.setView(progressView);
+
+        rActivity = new RunningActivity(this, progressDialog, adpProgress);
+        runningList.setRunningActivity(rActivity);
 
         repairCurrentDir();
         setTxvCurrentDir();
@@ -258,37 +248,16 @@ public class MainActivity extends AppCompatActivity {
 
                 if(isHavePermissionToWriteTextBoxFileName()){
                     String title = "Writing File: \nFile Name: " + file.getAbsolutePath();
-                    final Log log = new Log(title);
+                    final Log log = new Log(rActivity, title);
                     runningList.add(log);
 
                     if(writeFile(file, content.getBytes())){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.finish();
-                                notifyLogsChanged();
-                            }
-                        });
+                        log.finish();
                         isSaved=true;
                     }
-                    else{
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.makeUndone();
-                                notifyLogsChanged();
-                            }
-                        });
-                    }
+                    else log.makeUndone();
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            runningList.remove(log);
-                            notifyLogsChanged();
-                        }
-                    });
-
+                    runningList.remove(log);
                     logManager.addLog(log);
                 }
             }
@@ -421,51 +390,37 @@ public class MainActivity extends AppCompatActivity {
 
                                 String title = "Copying File:\nFrom: " + file.getAbsolutePath() + "\n" +
                                         "To: " + dest.getAbsolutePath();
-                                final Log log = new Log(title);
+                                final Log log = new Log(rActivity, title);
                                 runningList.add(log);
 
                                 final AsyncTask asyncTask = new AsyncTask() {
-                                    boolean doing = false;
+                                    DoneStatus doing = new DoneStatus();
+
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
-                                        if (copyFile(file, dest, log, false)) {
-                                            doing =true;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.finish();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
-                                        else {
-                                            doing =false;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.makeUndone();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
+                                        log.waitAndShowDialog();
 
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.makeUndone();
-                                                runningList.remove(log);
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                        logManager.addLog(log);
+                                        if (copyFile(file, dest, log, false))
+                                            doing.setFinished();
+
+                                        else doing.setUndone();
 
                                         return null;
                                     }
 
                                     @Override
                                     protected void onPostExecute(Object o) {
-                                        if(doing) showLongToast("File Copied");
-                                        else showLongToast("The file can not be copied");
+                                        if(doing.isFinished()){
+                                            log.finish();
+                                            showLongToast("File Copied");
+                                        }
+                                        else if(doing.isUndone()) {
+                                            log.makeUndone();
+                                            showLongToast("The file can not be copied");
+                                        }
+
+                                        runningList.remove(log);
+                                        logManager.addLog(log);
                                     }
                                 };
 
@@ -483,14 +438,8 @@ public class MainActivity extends AppCompatActivity {
                                             }, new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            log.makeUndone();
-                                                            runningList.remove(log);
-                                                            notifyLogsChanged();
-                                                        }
-                                                    });
+                                                    log.makeUndone();
+                                                    runningList.remove(log);
                                                     logManager.addLog(log);
                                                 }
                                             }).show();
@@ -541,51 +490,33 @@ public class MainActivity extends AppCompatActivity {
                             if (isHavePermissionToWriteTextBoxFileName(reqDestDialog.getTxtGetInput())) {
                                 String title = "Moving File:\nFrom: " + file.getAbsolutePath() + "\n" +
                                         "To: " + dest.getAbsolutePath();
-                                final Log log = new Log(title);
+                                final Log log = new Log(rActivity, title);
                                 runningList.add(log);
 
                                 final AsyncTask asyncTask = new AsyncTask() {
-                                    boolean doing = false;
+                                    DoneStatus doing = new DoneStatus();
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
-                                        if (cutFile(file, dest, log, false)){
-                                            doing=true;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.finish();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
-                                        else{
-                                            doing=false;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.makeUndone();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
-
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.makeUndone();
-                                                runningList.remove(log);
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                        logManager.addLog(log);
-
+                                        log.waitAndShowDialog();
+                                        if (cutFile(file, dest, log, false))
+                                            doing.setFinished();
+                                        else doing.setUndone();
                                         return null;
                                     }
 
                                     @Override
                                     protected void onPostExecute(Object o) {
-                                        if(doing) showLongToast("File Moved");
-                                        else showLongToast("The file can not be moved");
+                                        if(doing.isFinished()){
+                                            log.finish();
+                                            showLongToast("File Moved");
+                                        }
+                                        else if(doing.isUndone()){
+                                            log.makeUndone();
+                                            showLongToast("The file can not be moved");
+                                        }
+
+                                        runningList.remove(log);
+                                        logManager.addLog(log);
                                     }
                                 };
 
@@ -603,14 +534,8 @@ public class MainActivity extends AppCompatActivity {
                                             }, new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            log.makeUndone();
-                                                            runningList.remove(log);
-                                                            notifyLogsChanged();
-                                                        }
-                                                    });
+                                                    log.makeUndone();
+                                                    runningList.remove(log);
                                                     logManager.addLog(log);
                                                 }
                                             }).show();
@@ -648,7 +573,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if(isHavePermissionToWriteTextBoxFileName() && isHavePermissionToOpenTextBoxFileName()){
                     String title = "Removing File:\nFile Name: " + file.getAbsolutePath();
-                    final Log log = new Log(title);
+                    final Log log = new Log(rActivity, title);
                     runningList.add(log);
 
                     new SureDialog(MainActivity.this, "Are You Sure?", new Runnable() {
@@ -658,33 +583,14 @@ public class MainActivity extends AppCompatActivity {
                                 showLongToast("File Deleted!");
                                 txtFileName.setText("");
                                 txtFileName.requestFocus();
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        log.finish();
-                                        notifyLogsChanged();
-                                    }
-                                });
+                                log.finish();
                             }
                             else{
                                 showLongToast("The file can not be deleted");
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        log.makeUndone();
-                                        notifyLogsChanged();
-                                    }
-                                });
+                                log.makeUndone();
                             }
 
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    log.makeUndone();
-                                    runningList.remove(log);
-                                    notifyLogsChanged();
-                                }
-                            });
+                            runningList.remove(log);
                             logManager.addLog(log);
                         }
                     }, null).show();
@@ -782,38 +688,19 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else {
                     String title = "Make Directory:\nFile Name: " + tempDir.getAbsolutePath();
-                    final Log log = new Log(title);
+                    final Log log = new Log(rActivity, title);
                     runningList.add(log);
 
                     if(tempDir.mkdirs()){
                         showLongToast("Directory Created!");
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.finish();
-                                notifyLogsChanged();
-                            }
-                        });
+                        log.finish();
                     }
                     else {
                         accessDeniedToast.show();
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.makeUndone();
-                                notifyLogsChanged();
-                            }
-                        });
+                        log.makeUndone();
                     }
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            log.makeUndone();
-                            runningList.remove(log);
-                            notifyLogsChanged();
-                        }
-                    });
+                    runningList.remove(log);
                     logManager.addLog(log);
                 }
 
@@ -891,10 +778,10 @@ public class MainActivity extends AppCompatActivity {
                             if(canMakeDir(dest) && !isConflictCopy(dir, dest, PRINT_COPY)){
                                 String title = "Copying Directory:\nFrom: " + dir.getAbsolutePath() + "\n" +
                                         "To: " + dest.getAbsolutePath();
-                                final Log log = new Log(title);
+                                final Log log = new Log(rActivity, title);
                                 runningList.add(log);
                                 final AsyncTask asyncTask = new AsyncTask() {
-                                    boolean doing = false;
+                                    DoneStatus doing = new DoneStatus();
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
                                         long freeSpace;
@@ -903,54 +790,35 @@ public class MainActivity extends AppCompatActivity {
                                         fdDir.makeDetails();
                                         hideKeyboard(60);
 
-                                        if(fdDir.getSize()>freeSpace){
-                                            showLongToast("No enough space!");
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.makeUndone();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
-                                        else if (recCopyDir(dir, dest, log, false)){
-                                            doing=true;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.finish();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
-                                        else{
-                                            doing=false;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.makeUndone();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
+                                        if(freeSpace>fdDir.getSize()) {
+                                            log.waitAndShowDialog();
 
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.makeUndone();
-                                                runningList.remove(log);
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                        logManager.addLog(log);
+                                            if (recCopyDir(dir, dest, log, false))
+                                                doing.setFinished();
+
+                                            else doing.setUndone();
+                                        }
 
                                         return null;
                                     }
 
                                     @Override
                                     protected void onPostExecute(Object o) {
-                                        if(doing) showLongToast("Directory Copied");
-                                        else showLongToast("The directory can not be copied");
+                                        if(doing.isFinished()){
+                                            log.finish();
+                                            showLongToast("Directory Copied");
+                                        }
+                                        else if(doing.isUndone()) {
+                                            log.makeUndone();
+                                            showLongToast("The directory can not be copied");
+                                        }
+                                        else{
+                                            log.makeUndone();
+                                            showLongToast("No enough space!");
+                                        }
+
+                                        runningList.remove(log);
+                                        logManager.addLog(log);
                                     }
                                 };
 
@@ -968,14 +836,8 @@ public class MainActivity extends AppCompatActivity {
                                             }, new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            log.makeUndone();
-                                                            runningList.remove(log);
-                                                            notifyLogsChanged();
-                                                        }
-                                                    });
+                                                    log.makeUndone();
+                                                    runningList.remove(log);
                                                     logManager.addLog(log);
                                                 }
                                             }).show();
@@ -1033,54 +895,39 @@ public class MainActivity extends AppCompatActivity {
                             if (!isConflictCopy(dir, dest, PRINT_MOVE)) {
                                 String title = "Moving Directory:\nFrom: " + dir.getAbsolutePath() + "\n" +
                                         "To: " + dest.getAbsolutePath();
-                                final Log log = new Log(title);
+                                final Log log = new Log(rActivity, title);
                                 runningList.add(log);
 
                                 final AsyncTask asyncTask = new AsyncTask() {
-                                    boolean doing = false;
+                                    DoneStatus doing = new DoneStatus();
 
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
-                                        if (recCutDir(dir, dest, log, false)) {
-                                            doing = true;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.finish();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        } else {
-                                            doing = false;
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    log.makeUndone();
-                                                    notifyLogsChanged();
-                                                }
-                                            });
-                                        }
+                                        log.waitAndShowDialog();
 
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.makeUndone();
-                                                runningList.remove(log);
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                        logManager.addLog(log);
+                                        if (recCutDir(dir, dest, log, false))
+                                            doing.setFinished();
+
+                                        else doing.setUndone();
 
                                         return null;
                                     }
 
                                     @Override
                                     protected void onPostExecute(Object o) {
-                                        if (doing) {
+                                        if (doing.isFinished()) {
+                                            log.finish();
                                             showLongToast("Directory Moved");
                                             repairCurrentDir();
                                             setTxvCurrentDir();
-                                        } else showLongToast("The directory can not be moved");
+                                        }
+                                        else if(doing.isUndone()) {
+                                            log.makeUndone();
+                                            showLongToast("The directory can not be moved");
+                                        }
+
+                                        runningList.remove(log);
+                                        logManager.addLog(log);
                                     }
                                 };
 
@@ -1098,14 +945,8 @@ public class MainActivity extends AppCompatActivity {
                                             }, new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    runOnUiThread(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            log.makeUndone();
-                                                            runningList.remove(log);
-                                                            notifyLogsChanged();
-                                                        }
-                                                    });
+                                                    log.makeUndone();
+                                                    runningList.remove(log);
                                                     logManager.addLog(log);
                                                 }
                                             }).show();
@@ -1173,51 +1014,24 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             String title = "Removing Directory:\nFile Name: " + dir.getAbsolutePath();
-                            final Log log = new Log(title);
+                            final Log log = new Log(rActivity, title);
                             log.setMax(fd.getNumFiles() + fd.getNumDirs());
                             runningList.add(log);
 
                             final AsyncTask asyncTask = new AsyncTask() {
-                                boolean doing = false;
+                                DoneStatus doing = new DoneStatus();
                                 @Override
                                 protected Object doInBackground(Object[] objects) {
-                                    if (recRemoveDir(dir, log)){
-                                        doing=true;
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.finish();
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                    }
-                                    else{
-                                        doing=false;
-                                        runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                log.makeUndone();
-                                                notifyLogsChanged();
-                                            }
-                                        });
-                                    }
-
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            log.makeUndone();
-                                            runningList.remove(log);
-                                            notifyLogsChanged();
-                                        }
-                                    });
-                                    logManager.addLog(log);
-
+                                    log.waitAndShowDialog();
+                                    if (recRemoveDir(dir, log)) doing.setFinished();
+                                    else doing.setUndone();
                                     return null;
                                 }
 
                                 @Override
                                 protected void onPostExecute(Object o) {
-                                    if(doing){
+                                    if(doing.isFinished()){
+                                        log.finish();
                                         showLongToast("Directory Deleted!");
                                         txtDir.setText("");
                                         txtDir.requestFocus();
@@ -1225,7 +1039,13 @@ public class MainActivity extends AppCompatActivity {
                                         repairCurrentDir();
                                         setTxvCurrentDir();
                                     }
-                                    else showLongToast("The Directory can not be deleted");
+                                    else if(doing.isUndone()) {
+                                        log.makeUndone();
+                                        showLongToast("The Directory can not be deleted");
+                                    }
+
+                                    runningList.remove(log);
+                                    logManager.addLog(log);
                                 }
                             };
 
@@ -1272,7 +1092,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
 
         hideAllToasts();
-
         spEditor.clear();
 
         spEditor.putString("current-dir", currentDir.getAbsolutePath());
@@ -1291,7 +1110,7 @@ public class MainActivity extends AppCompatActivity {
             spEditor.putLong(start+"progress", log.getProgress());
             spEditor.putInt(start+"state", log.getState());
             spEditor.putLong(start+"date", log.getDate().getTime());
-
+            spEditor.putString(start+"cause", log.getCause());
         }
 
         spEditor.apply();
@@ -1488,16 +1307,7 @@ public class MainActivity extends AppCompatActivity {
             int len;
             while ((len = in.read(buffer)) != -1) {
                 out.write(buffer, 0, len);
-                if(log!=null){
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            log.incerementProgress();
-                            notifyLogsChanged();
-                        }
-                    });
-                }
+                if(log!=null) log.incerementProgress();
             }
 
             in.close();
@@ -1507,30 +1317,13 @@ public class MainActivity extends AppCompatActivity {
             out.close();
             out = null;
 
-            if(log!=null && !noChangeProgress){
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        log.finish();
-                        notifyLogsChanged();
-                    }
-                });
-
-            }
+            if(log!=null && !noChangeProgress) log.finish();
             return true;
 
         }
         catch (IOException e) {
             showLongToast(e.getMessage());
-            if(log!=null){
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        log.makeUndone();
-                        notifyLogsChanged();
-                    }
-                });
-            }
+            if(log!=null) log.makeUndone();
             return false;
         }
     }
@@ -1674,10 +1467,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean recRemoveDir(File dir, Log log){
         if(dir.isFile()){
             if(dir.delete()){
-                if(log!=null){
-                    log.incerementProgress();
-                    notifyLogsChanged();
-                }
+                if(log!=null) log.incerementProgress();
                 return true;
             }
             return false;
@@ -1692,10 +1482,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(dir.delete()){
-            if(log!=null){
-                log.incerementProgress();
-                notifyLogsChanged();
-            }
+            if(log!=null) log.incerementProgress();
             return true;
         }
         return false;
