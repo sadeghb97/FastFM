@@ -398,9 +398,13 @@ public class MainActivity extends AppCompatActivity {
                                     DoneStatus doing = new DoneStatus();
 
                                     @Override
-                                    protected Object doInBackground(Object[] objects) {
+                                    protected void onPreExecute() {
+                                        super.onPreExecute();
                                         log.waitAndShowDialog();
+                                    }
 
+                                    @Override
+                                    protected Object doInBackground(Object[] objects) {
                                         if (copyFile(file, dest, log, false))
                                             doing.setFinished();
 
@@ -496,9 +500,15 @@ public class MainActivity extends AppCompatActivity {
 
                                 final AsyncTask asyncTask = new AsyncTask() {
                                     DoneStatus doing = new DoneStatus();
+
+                                    @Override
+                                    protected void onPreExecute() {
+                                        super.onPreExecute();
+                                        log.waitAndShowDialog();
+                                    }
+
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
-                                        log.waitAndShowDialog();
                                         if (cutFile(file, dest, log, false))
                                             doing.setFinished();
                                         else doing.setUndone();
@@ -783,6 +793,13 @@ public class MainActivity extends AppCompatActivity {
                                 runningList.add(log);
                                 final AsyncTask asyncTask = new AsyncTask() {
                                     DoneStatus doing = new DoneStatus();
+
+                                    @Override
+                                    protected void onPreExecute() {
+                                        super.onPreExecute();
+                                        log.waitAndShowDialog();
+                                    }
+
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
                                         long freeSpace;
@@ -792,8 +809,6 @@ public class MainActivity extends AppCompatActivity {
                                         hideKeyboard(60);
 
                                         if(freeSpace>fdDir.getSize()) {
-                                            log.waitAndShowDialog();
-
                                             if (recCopyDir(dir, dest, log, false))
                                                 doing.setFinished();
 
@@ -903,9 +918,13 @@ public class MainActivity extends AppCompatActivity {
                                     DoneStatus doing = new DoneStatus();
 
                                     @Override
-                                    protected Object doInBackground(Object[] objects) {
+                                    protected void onPreExecute() {
+                                        super.onPreExecute();
                                         log.waitAndShowDialog();
+                                    }
 
+                                    @Override
+                                    protected Object doInBackground(Object[] objects) {
                                         if (recCutDir(dir, dest, log, false))
                                             doing.setFinished();
 
@@ -1021,9 +1040,15 @@ public class MainActivity extends AppCompatActivity {
 
                             final AsyncTask asyncTask = new AsyncTask() {
                                 DoneStatus doing = new DoneStatus();
+
+                                @Override
+                                protected void onPreExecute() {
+                                    super.onPreExecute();
+                                    log.waitAndShowDialog();
+                                }
+
                                 @Override
                                 protected Object doInBackground(Object[] objects) {
-                                    log.waitAndShowDialog();
                                     if (recRemoveDir(dir, log)) doing.setFinished();
                                     else doing.setUndone();
                                     return null;
@@ -1787,8 +1812,8 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
-        if(!file.isFile()){
-            showLongToast("File Not Found!");
+        if(file.isDirectory()){
+            showLongToast("This filename belongs to a Directory!");
             return false;
         }
 

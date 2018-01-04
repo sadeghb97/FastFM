@@ -114,7 +114,7 @@ public class Log {
                         if (state == STATE_RUN && !Log.this.rActivity.getProgressDialog().isShowing())
                             Log.this.rActivity.getProgressDialog().show();
                     }
-                }, 200);
+                }, 300);
             }
         });
     }

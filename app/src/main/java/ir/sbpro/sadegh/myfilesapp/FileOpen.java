@@ -107,7 +107,7 @@ public class FileOpen {
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].lastModified()<filesList[j].lastModified())
                         change=true;
                 }
-                
+
                 else if(sortBy==SORT_BY_TYPE){
                     if(sortDir==SORT_ASCENDING && compareExt(filesList[chosenIndex],filesList[j])==1)
                         change=true;
