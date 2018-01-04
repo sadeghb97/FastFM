@@ -70,11 +70,9 @@ public class MainActivity extends AppCompatActivity {
     String tempStr;
     File currentDir;
 
-    //View progressView;
     AlertDialog logsDialog;
     AlertDialog progressDialog;
     ProgressAdapter adpProgress;
-    //ListView lsvProgress;
     RunningActivity rActivity;
     Timer timerCurrentDir;
     SharedPreferences sharedPreferences;
@@ -150,10 +148,13 @@ public class MainActivity extends AppCompatActivity {
 
         if(sortBy != UNKNOWN_INT){
             RadioButton rbName = findViewById(R.id.rbSortName);
+            RadioButton rbType = findViewById(R.id.rbSortType);
             RadioButton rbSize = findViewById(R.id.rbSortSize);
             RadioButton rbModified = findViewById(R.id.rbSortModified);
             if(sortBy == FileOpen.SORT_BY_NAME)
                 rbName.setChecked(true);
+            else if(sortBy == FileOpen.SORT_BY_TYPE)
+                rbType.setChecked(true);
             else if(sortBy == FileOpen.SORT_BY_SIZE)
                 rbSize.setChecked(true);
             else if(sortBy == FileOpen.SORT_BY_MODIFIED)
@@ -344,7 +345,7 @@ public class MainActivity extends AppCompatActivity {
         btnHelpFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                helpFileName(FILES_ONLY);
+                helpFileName(BOTH);
             }
         });
 
@@ -1735,13 +1736,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean isHavePermissionToOpenTextBoxFileName(EditText txtFN){
         String textBoxFileName = txtFN.getText().toString();
         String fileName=recGetAbsTextBoxFileName(currentDir, textBoxFileName);
+        File file = new File(fileName);
 
         if(textBoxFileName.isEmpty()){
             txtFN.requestFocus();
             return false;
         }
-
-        File file = new File(fileName);
 
         if(isExternalReq(txtFN)) {
             if (!haveStoragePermission()) {
@@ -1784,6 +1784,11 @@ public class MainActivity extends AppCompatActivity {
 
         if(textBoxFileName.isEmpty()){
             txtFN.requestFocus();
+            return false;
+        }
+
+        if(!file.isFile()){
+            showLongToast("File Not Found!");
             return false;
         }
 
@@ -1988,6 +1993,7 @@ public class MainActivity extends AppCompatActivity {
         RadioGroup rg = findViewById(R.id.rgSortBy);
         int id = rg.getCheckedRadioButtonId();
         if(id == R.id.rbSortName) return FileOpen.SORT_BY_NAME;
+        else if(id == R.id.rbSortType) return FileOpen.SORT_BY_TYPE;
         else if(id == R.id.rbSortSize) return FileOpen.SORT_BY_SIZE;
         else return FileOpen.SORT_BY_MODIFIED;
     }

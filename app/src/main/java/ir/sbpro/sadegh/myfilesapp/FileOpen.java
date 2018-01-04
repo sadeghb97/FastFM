@@ -2,6 +2,9 @@ package ir.sbpro.sadegh.myfilesapp;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.*;
+import android.widget.Toast;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -12,7 +15,7 @@ public class FileOpen {
     final static int SORT_BY_NAME = 1;
     final static int SORT_BY_SIZE = 2;
     final static int SORT_BY_MODIFIED = 3;
-    final static int SORT_BY_DEEP_SIZE = 4;
+    final static int SORT_BY_TYPE = 4;
 
     public static void openFile(Context context, File url) throws IOException {
         // Create URI
@@ -77,22 +80,38 @@ public class FileOpen {
             int chosenIndex = i;
             for(int j=i+1; filesList.length>j; j++){
                 boolean change = false;
-                if(sortBy==SORT_BY_NAME){
+
+                if(filesList[chosenIndex].isFile() && filesList[j].isDirectory())
+                    change=true;
+
+                else if(filesList[chosenIndex].isDirectory() && filesList[j].isFile())
+                    change=false;
+
+                else if(sortBy==SORT_BY_NAME){
                     if(sortDir==SORT_ASCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) > 0)
                         change=true;
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].getName().compareToIgnoreCase(filesList[j].getName()) < 0)
                         change=true;
                 }
+
                 else if(sortBy==SORT_BY_SIZE){
                     if(sortDir==SORT_ASCENDING && filesList[chosenIndex].length()>filesList[j].length())
                         change=true;
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].length()<filesList[j].length())
                         change=true;
                 }
+
                 else if(sortBy==SORT_BY_MODIFIED){
                     if(sortDir==SORT_ASCENDING && filesList[chosenIndex].lastModified()>filesList[j].lastModified())
                         change=true;
                     else if(sortDir==SORT_DESCENDING && filesList[chosenIndex].lastModified()<filesList[j].lastModified())
+                        change=true;
+                }
+                
+                else if(sortBy==SORT_BY_TYPE){
+                    if(sortDir==SORT_ASCENDING && compareExt(filesList[chosenIndex],filesList[j])==1)
+                        change=true;
+                    else if(sortDir==SORT_DESCENDING && compareExt(filesList[chosenIndex],filesList[j])==2)
                         change=true;
                 }
 
@@ -107,5 +126,26 @@ public class FileOpen {
                 filesList[chosenIndex]=tempFile;
             }
         }
+    }
+
+    public static int compareExt(File f1, File f2){
+        String fn1 = f1.getName();
+        String fn2 = f2.getName();
+        int p1 = fn1.lastIndexOf(".");
+        int p2 = fn2.lastIndexOf(".");
+
+        if(p1<0 && p2<0) return 0;
+        if(p1<0) return 2;
+        if(p2<0) return 1;
+
+        String ext1, ext2;
+        if(fn1.length()>(p1+1)) ext1 = fn1.substring(p1+1);
+        else ext1="";
+        if(fn2.length()>(p2+1)) ext2 = fn2.substring(p2+1);
+        else ext2="";
+
+        if(ext1.compareToIgnoreCase(ext2)>0) return 1;
+        if(ext1.compareToIgnoreCase(ext2)<0) return 2;
+        return 0;
     }
 }

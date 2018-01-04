@@ -249,8 +249,7 @@
             android:id="@+id/rgSortBy"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="48dp"
-            android:layout_marginRight="48dp"
+            android:layout_marginHorizontal="24dp"
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:orientation="horizontal">
@@ -262,6 +261,13 @@
                 android:layout_weight="1"
                 android:checked="true"
                 android:text="Name" />
+
+            <RadioButton
+                android:id="@+id/rbSortType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Type" />
 
             <RadioButton
                 android:id="@+id/rbSortSize"
