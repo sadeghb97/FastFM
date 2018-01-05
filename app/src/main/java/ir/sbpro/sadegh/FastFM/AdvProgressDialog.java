@@ -1,8 +1,7 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import android.support.v7.app.AlertDialog;
 import android.view.View;
-import android.widget.Toast;
 
 public class AdvProgressDialog {
     private AlertDialog dialog;

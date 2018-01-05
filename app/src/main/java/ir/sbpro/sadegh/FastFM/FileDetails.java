@@ -1,4 +1,4 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import android.content.Context;
 import android.support.v7.app.AlertDialog;

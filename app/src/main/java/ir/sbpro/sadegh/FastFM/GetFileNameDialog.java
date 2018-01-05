@@ -1,12 +1,10 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import android.support.v7.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
 
 import java.io.File;
-
-import static ir.sbpro.sadegh.myfilesapp.MainActivity.FILES_ONLY;
 
 public class GetFileNameDialog extends GetStringDialog {
     File currentDir;

@@ -1,4 +1,4 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import android.Manifest;
 import android.content.Context;
@@ -20,7 +20,6 @@ import android.text.method.KeyListener;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -39,7 +38,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;

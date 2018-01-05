@@ -1,10 +1,7 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Message;
 import android.support.v7.app.AlertDialog;
 
 import java.io.File;

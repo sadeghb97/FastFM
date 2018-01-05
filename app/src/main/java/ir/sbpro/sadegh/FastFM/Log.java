@@ -1,9 +1,7 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
 
 public class Log {
     RunningActivity rActivity;

@@ -1,4 +1,4 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 
 import org.junit.Test;
 

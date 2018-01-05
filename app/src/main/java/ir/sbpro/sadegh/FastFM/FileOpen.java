@@ -1,9 +1,7 @@
-package ir.sbpro.sadegh.myfilesapp;
+package ir.sbpro.sadegh.FastFM;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.util.*;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
