@@ -8,9 +8,9 @@ public class RunningActivity {
     private Context context;
     private Activity activity;
     private ProgressAdapter adapter;
-    private AlertDialog progressDialog;
+    private AdvProgressDialog progressDialog;
 
-    RunningActivity(Context context, AlertDialog progressDialog, ProgressAdapter adapter){
+    RunningActivity(Context context, AdvProgressDialog progressDialog, ProgressAdapter adapter){
         this.context=context;
         this.activity=(Activity) context;
         this.adapter=adapter;
@@ -29,7 +29,7 @@ public class RunningActivity {
         return adapter;
     }
 
-    public AlertDialog getProgressDialog() {
+    public AdvProgressDialog getProgressDialog() {
         return progressDialog;
     }
 }

@@ -14,10 +14,10 @@ public class Log {
     Date date;
     String cause;
 
-    final int STATE_RUN = 0;
-    final int STATE_SUCCESSFUL = 1;
-    final int STATE_UNDONE = 2;
-    final int STATE_INCOMPLETED = 3;
+    final static int STATE_RUN = 0;
+    final static int STATE_SUCCESSFUL = 1;
+    final static int STATE_UNDONE = 2;
+    final static int STATE_INCOMPLETED = 3;
 
     Log(RunningActivity rActivity, String title) {
         this.rActivity = rActivity;
@@ -121,42 +121,42 @@ public class Log {
 
     public void incerementProgress(){
         if((progress+1) <= max){
-            rActivity.getActivity().runOnUiThread(new Runnable() {
+            progress++;
+            if(progress==max) finish();
+            /*rActivity.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    progress++;
-                    if(progress==max) finish();
                     rActivity.getAdapter().notifyDataSetChanged();
                 }
-            });
+            });*/
         }
     }
 
     public void finish(){
+        state=STATE_SUCCESSFUL;
         rActivity.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                state=STATE_SUCCESSFUL;
                 rActivity.getAdapter().notifyDataSetChanged();
             }
         });
     }
 
     public void makeUndone(){
+        state=STATE_UNDONE;
         rActivity.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                state=STATE_UNDONE;
                 rActivity.getAdapter().notifyDataSetChanged();
             }
         });
     }
 
     public void makeIncompleted(){
+        state=STATE_INCOMPLETED;
         rActivity.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                state=STATE_INCOMPLETED;
                 rActivity.getAdapter().notifyDataSetChanged();
             }
         });

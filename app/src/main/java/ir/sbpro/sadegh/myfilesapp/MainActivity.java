@@ -20,8 +20,10 @@ import android.text.method.KeyListener;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -71,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
     File currentDir;
 
     AlertDialog logsDialog;
-    AlertDialog progressDialog;
+    AdvProgressDialog progressDialog;
     ProgressAdapter adpProgress;
     RunningActivity rActivity;
     Timer timerCurrentDir;
@@ -214,9 +216,33 @@ public class MainActivity extends AppCompatActivity {
         lsvProgress.setAdapter(adpProgress);
         lsvProgress.setEmptyView(progressView.findViewById(R.id.empty));
 
+        lsvProgress.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final Log log = runningList.get(position);
+                new SureDialog(MainActivity.this, "Are you sure to cancel this process?", new Runnable() {
+                    @Override
+                    public void run() {
+                        if(log.getState() == Log.STATE_RUN) log.makeIncompleted();
+                    }
+                }, null).show();
+            }
+        });
+
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setPositiveButton("Hide", null);
-        progressDialog = builder.create();
+        builder.setNeutralButton("Cancel All", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                new SureDialog(MainActivity.this, "Are you sure?", new Runnable() {
+                    @Override
+                    public void run() {
+                        runningList.cancelAll();
+                    }
+                }, null).show();
+            }
+        });
+        progressDialog = new AdvProgressDialog(builder.create(), runningList);
         progressDialog.setView(progressView);
 
         rActivity = new RunningActivity(this, progressDialog, adpProgress);
@@ -405,10 +431,9 @@ public class MainActivity extends AppCompatActivity {
 
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
-                                        if (copyFile(file, dest, log, false))
-                                            doing.setFinished();
-
-                                        else doing.setUndone();
+                                        if(runningList.indexOf(log)<0) return null;
+                                        if (copyFile(file, dest, log, false)) doing.setFinished();
+                                        else if(log.getState()==Log.STATE_RUN) doing.setUndone();
 
                                         return null;
                                     }
@@ -423,6 +448,9 @@ public class MainActivity extends AppCompatActivity {
                                             log.makeUndone();
                                             showLongToast("The file can not be copied");
                                         }
+                                        else if(runningList.indexOf(log)>=0 &&
+                                                log.getState() == Log.STATE_INCOMPLETED)
+                                            showLongToast("Copying File Canceled!");
 
                                         runningList.remove(log);
                                         logManager.addLog(log);
@@ -509,9 +537,10 @@ public class MainActivity extends AppCompatActivity {
 
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
+                                        if(runningList.indexOf(log)<0) return null;
                                         if (cutFile(file, dest, log, false))
                                             doing.setFinished();
-                                        else doing.setUndone();
+                                        else if(log.getState()==Log.STATE_RUN) doing.setUndone();
                                         return null;
                                     }
 
@@ -525,6 +554,9 @@ public class MainActivity extends AppCompatActivity {
                                             log.makeUndone();
                                             showLongToast("The file can not be moved");
                                         }
+                                        else if(runningList.indexOf(log)>=0 &&
+                                                log.getState() == Log.STATE_INCOMPLETED)
+                                            showLongToast("Moving File Canceled!");
 
                                         runningList.remove(log);
                                         logManager.addLog(log);
@@ -802,6 +834,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
+                                        if(runningList.indexOf(log)<0) return null;
                                         long freeSpace;
                                         if(dest.exists()) freeSpace=dest.getFreeSpace();
                                         else freeSpace = dest.getParentFile().getFreeSpace();
@@ -812,7 +845,7 @@ public class MainActivity extends AppCompatActivity {
                                             if (recCopyDir(dir, dest, log, false))
                                                 doing.setFinished();
 
-                                            else doing.setUndone();
+                                            else if(log.getState()==Log.STATE_RUN) doing.setUndone();
                                         }
 
                                         return null;
@@ -827,6 +860,10 @@ public class MainActivity extends AppCompatActivity {
                                         else if(doing.isUndone()) {
                                             log.makeUndone();
                                             showLongToast("The directory can not be copied");
+                                        }
+                                        else if(log.getState() == Log.STATE_INCOMPLETED) {
+                                            if (runningList.indexOf(log) >= 0)
+                                                showLongToast("Copying Directory Canceled!");
                                         }
                                         else{
                                             log.makeUndone();
@@ -925,10 +962,10 @@ public class MainActivity extends AppCompatActivity {
 
                                     @Override
                                     protected Object doInBackground(Object[] objects) {
+                                        if(runningList.indexOf(log)<0) return null;
                                         if (recCutDir(dir, dest, log, false))
                                             doing.setFinished();
-
-                                        else doing.setUndone();
+                                        else if(log.getState()==Log.STATE_RUN) doing.setUndone();
 
                                         return null;
                                     }
@@ -945,6 +982,9 @@ public class MainActivity extends AppCompatActivity {
                                             log.makeUndone();
                                             showLongToast("The directory can not be moved");
                                         }
+                                        else if(runningList.indexOf(log)>=0 &&
+                                                log.getState() == Log.STATE_INCOMPLETED)
+                                            showLongToast("Moving Directory Canceled!");
 
                                         runningList.remove(log);
                                         logManager.addLog(log);
@@ -1049,8 +1089,9 @@ public class MainActivity extends AppCompatActivity {
 
                                 @Override
                                 protected Object doInBackground(Object[] objects) {
+                                    if(runningList.indexOf(log)<0) return null;
                                     if (recRemoveDir(dir, log)) doing.setFinished();
-                                    else doing.setUndone();
+                                    else if(log.getState()==Log.STATE_RUN) doing.setUndone();
                                     return null;
                                 }
 
@@ -1069,6 +1110,9 @@ public class MainActivity extends AppCompatActivity {
                                         log.makeUndone();
                                         showLongToast("The Directory can not be deleted");
                                     }
+                                    else if(runningList.indexOf(log)>=0 &&
+                                            log.getState() == Log.STATE_INCOMPLETED)
+                                        showLongToast("Removing Directory Canceled!");
 
                                     runningList.remove(log);
                                     logManager.addLog(log);
@@ -1332,6 +1376,7 @@ public class MainActivity extends AppCompatActivity {
             byte[] buffer = new byte[1024];
             int len;
             while ((len = in.read(buffer)) != -1) {
+                if(log!=null && log.getState()!=Log.STATE_RUN) return false;
                 out.write(buffer, 0, len);
                 if(log!=null) log.incerementProgress();
             }
@@ -1441,6 +1486,8 @@ public class MainActivity extends AppCompatActivity {
                 File file = new File(src, item);
                 File destFile = new File(dest, item);
 
+                if(log!=null && log.getState()!=Log.STATE_RUN) return false;
+
                 if(file.isFile()) copyFile(file, destFile, log, true);
                 else recCopyDir(file, destFile, log, true);
             }
@@ -1477,6 +1524,8 @@ public class MainActivity extends AppCompatActivity {
                 File file = new File(src, item);
                 File destFile = new File(dest, item);
 
+                if(log!=null && log.getState() != Log.STATE_RUN) return false;
+
                 if (file.isFile()) cutFile(file, destFile, log, true);
                 else recCutDir(file, destFile, log, true);
             }
@@ -1492,6 +1541,7 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean recRemoveDir(File dir, Log log){
         if(dir.isFile()){
+            if(log!=null && log.getState()!=Log.STATE_RUN) return false;
             if(dir.delete()){
                 if(log!=null) log.incerementProgress();
                 return true;
@@ -1502,6 +1552,7 @@ public class MainActivity extends AppCompatActivity {
         String[] list = dir.list();
         if(list!=null) {
             for(String item : list){
+                if(log!=null && log.getState()!=Log.STATE_RUN) return false;
                 File file = new File(dir, item);
                 recRemoveDir(file, log);
             }

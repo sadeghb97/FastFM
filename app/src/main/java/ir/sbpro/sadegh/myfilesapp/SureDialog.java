@@ -20,7 +20,7 @@ public class SureDialog extends AlertDialog.Builder{
             }
         });
 
-        setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+        setNegativeButton("No", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if(negRunnable!=null) negRunnable.run();
